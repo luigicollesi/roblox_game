@@ -8,6 +8,9 @@
       },
       "Navigation": {
         "$className": "RemoteFunction"
+      },
+      "Economy": {
+        "$className": "RemoteFunction"
       }
     },
     "ServerScriptService": {

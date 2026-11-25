@@ -20,6 +20,10 @@ end
 local function response(session: Session, code: string?)
 	return { ok = code == nil, code = code, locationId = session.state.locationId, revision = session.state.revision }
 end
+function Service.getLocation(player: Player): string?
+	local session = sessions[player]
+	return if session then session.state.locationId else nil
+end
 function Service.start(remote: RemoteFunction)
 	assert(not started, "LocationService já iniciado")
 	started = true

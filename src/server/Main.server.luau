@@ -22,5 +22,9 @@ if RunService:IsStudio() then
 end
 local remote = ReplicatedStorage:WaitForChild(Protocol.remoteName)
 assert(remote:IsA("RemoteFunction"), "Remote de navegação inválido")
-require(script.Parent.services.LocationService).start(remote)
+local locations = require(script.Parent.services.LocationService)
+locations.start(remote)
+local economyRemote = ReplicatedStorage:WaitForChild("Economy")
+assert(economyRemote:IsA("RemoteFunction"))
+require(script.Parent.services.EconomyService).start(economyRemote)
 print("[Valdória] Navegação inicializada.")
