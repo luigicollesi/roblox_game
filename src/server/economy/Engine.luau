@@ -115,31 +115,45 @@ function Engine.new(C, R, clock, random)
             handlers[id] = {enabled=enabled, apply=fn, title=title}
         end
         local shop = C.shops[location]
+        local counts = {}
+        local totalMarketItems = 0
+        if shop then
+            for _,item in pairs(E.marketItems) do
+                local key=item.recipe..":"..item.rarity
+                counts[key]=(counts[key] or 0)+1
+                totalMarketItems+=1
+            end
+        end
+        local function countAt(recipe,rarity) return counts[recipe..":"..rarity] or 0 end
         if shop then
             for _,id in ipairs(sortedKeys(C.materials)) do
                 local def = C.materials[id]
                 if shop.material == "all" or shop.material == def.category then
                     local stock = E.stock[id]
-                    -- Marginal pricing: the reverse transaction cannot create money.
-                    local bid = materialPrice(id, stock)
-                    local askBase = materialPrice(id, math.max(0, stock - 1))
-                    local ask = shop.market and askBase or R.retail(askBase)
-                    add("buy:"..id, def.raw and "Brutos" or "Processados", "Comprar "..def.name.." | "..ask.." moedas | estoque "..stock,
-                        stock>0 and p.coins>=ask, function()
-                        p.coins -= ask; E.budget += ask; E.stock[id] -= 1; grant(p,id,1); marketTouch()
-                    end)
-                    if shop.market and (p.materials[id] or 0)>0 then
-                        add("sell:"..id,"Vender materiais","Vender "..def.name.." | "..bid.." moedas | possui "..p.materials[id],
-                            E.budget>=bid and stock<target(id)*3, function()
-                            consume(p,{[id]=1}); p.coins += bid; E.budget -= bid; E.stock[id] += 1; marketTouch()
+                    for _,qty in ipairs({1,5}) do
+                        local bid,ask=0,0
+                        for i=1,qty do
+                            bid+=materialPrice(id,stock+i-1)
+                            local unit=materialPrice(id,math.max(0,stock-i))
+                            ask+=shop.market and unit or R.retail(unit)
+                        end
+                        add("buy:"..id..":"..qty, def.raw and "Brutos" or "Processados", "Comprar "..qty.."x "..def.name.." | "..ask.." moedas | estoque "..stock,
+                            stock>=qty and p.coins>=ask and (p.materials[id] or 0)+qty<=10000, function()
+                            p.coins-=ask;E.budget+=ask;E.stock[id]-=qty;grant(p,id,qty);marketTouch()
                         end)
+                        if shop.market and (p.materials[id] or 0)>=qty then
+                            add("sell:"..id..":"..qty,"Vender materiais","Vender "..qty.."x "..def.name.." | "..bid.." moedas | possui "..p.materials[id],
+                                E.budget>=bid and stock+qty<=target(id)*3,function()
+                                consume(p,{[id]=qty});p.coins+=bid;E.budget-=bid;E.stock[id]+=qty;marketTouch()
+                            end)
+                        end
                     end
                 end
             end
             for _,uid in ipairs(sortedKeys(E.marketItems)) do
                 local item = E.marketItems[uid]
                 if matchShop(shop,C.recipes[item.recipe]) then
-                    local base = itemPrice(item, marketCount(item.recipe,item.rarity)-1)
+                    local base = itemPrice(item, countAt(item.recipe,item.rarity)-1)
                     local ask = shop.market and base or R.retail(base)
                     add("buyitem:"..uid,"Comprar equipamentos","Comprar "..itemName(item).." | "..ask.." moedas",
                         p.coins>=ask and inventoryCount(p)+(p.job and p.job.kind=="craft" and p.job.qty or 0)<100, function()
@@ -150,10 +164,10 @@ function Engine.new(C, R, clock, random)
             if shop.market then
                 for _,uid in ipairs(sortedKeys(p.items)) do
                     local item = p.items[uid]
-                    local count = marketCount(item.recipe,item.rarity)
+                    local count = countAt(item.recipe,item.rarity)
                     local price = itemPrice(item,count)
                     add("sellitem:"..uid,"Vender equipamentos","Vender "..itemName(item).." | "..price.." moedas",
-                        count<12 and E.budget>=price and p.main~=uid and p.off~=uid, function()
+                        count<12 and totalMarketItems<500 and E.budget>=price and p.main~=uid and p.off~=uid, function()
                         p.items[uid]=nil; E.marketItems[uid]=item; p.coins+=price; E.budget-=price; marketTouch()
                     end)
                 end
@@ -182,7 +196,7 @@ function Engine.new(C, R, clock, random)
                         for _,qty in ipairs({1,5}) do
                             local inputs=scaled(process.inputs,qty)
                             add("process:"..output..":"..qty,"Processar",qty.."x "..C.materials[output].name.." | "..materialsText(inputs).." | "..process.seconds*qty.."s",
-                                rented and not p.job and has(p,inputs),function()
+                                rented and not p.job and has(p,inputs) and (p.materials[output] or 0)+qty<=10000,function()
                                 consume(p,inputs); p.job={kind="process",id=output,qty=qty,ends=clock()+process.seconds*qty}
                             end)
                         end

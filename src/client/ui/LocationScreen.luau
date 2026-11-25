@@ -5,6 +5,8 @@ local Assets = require(ReplicatedStorage.Shared.config.Assets)
 local Controller = require(script.Parent.Parent.controllers.NavigationController)
 type View = Controller.View
 local Screen = {}
+local EconomyScreen = require(script.Parent.EconomyScreen)
+local Catalog = require(ReplicatedStorage.Shared.economy.Catalog)
 local colors = { bg = Color3.fromRGB(25, 25, 25), panel = Color3.fromRGB(43, 43, 43), text = Color3.fromRGB(245, 245, 245), muted = Color3.fromRGB(185, 185, 185) }
 local labels = {street = "Rua", district = "Distrito", gate = "Portão", establishment = "Estabelecimento", room = "Área interna"}
 local function label(parent: Instance, text: string, size: number, height: number): TextLabel
@@ -123,9 +125,14 @@ function Screen.mount(playerGui: PlayerGui, remote: RemoteFunction)
 			local item = button(content, title, not view.busy, function() nav.move(id) end)
 			add(item)
 		end
+		local economicLocation = Catalog.shops[node.id] ~= nil or node.id == Catalog.learnLocation or node.id == Catalog.trainingLocation
+		for _, station in pairs(Catalog.stations) do
+			if station.location == node.id then economicLocation = true end
+		end
+		add(button(content, if economicLocation then "Abrir serviços econômicos / Inventário" else "Inventário / Equipamentos", not view.busy, function() EconomyScreen.open(gui, root) end))
 		if node.kind == "gate" then
 			add(label(content, "O exterior da capital ainda não está disponível.", 15, 52))
-		elseif node.kind == "establishment" or node.kind == "room" then
+		elseif not economicLocation and (node.kind == "establishment" or node.kind == "room") then
 			add(label(content, "Serviços ainda não implementados.", 15, 38))
 		end
 		add(button(content, "Sincronizar localização", not view.busy, function() nav.refresh() end))
