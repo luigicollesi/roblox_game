@@ -73,6 +73,14 @@ function Engine.new(C, R, clock, random)
     local function itemName(item)
         return C.recipes[item.recipe].name .. " / " .. R.rarity[item.rarity] .. " / " .. math.floor(item.current * 100 / item.maximum) .. "%"
     end
+    local function itemDetails(item)
+        local r=C.recipes[item.recipe]
+        local quality=({1,1.15,1.35})[item.rarity]
+        local defense=({1,1.1,1.25})[item.rarity]
+        return {uid=item.uid, name=r.name, category=r.category, rarity=R.rarity[item.rarity],
+            current=item.current, maximum=item.maximum, weight=r.weight, force=r.force, hands=r.hands,
+            damage=math.floor(r.power*quality), defense=math.floor(r.defense*defense), magic=math.floor(r.magic*quality)}
+    end
     local function matchShop(shop, recipe)
         local shield = recipe.category == "smallshield" or recipe.category == "largeshield"
         local magic = recipe.category == "staff" or recipe.category == "wand"
@@ -102,9 +110,9 @@ function Engine.new(C, R, clock, random)
         E.finish(p)
         local now = clock()
         local rows, handlers = {}, {}
-        local function add(id, group, title, enabled, fn)
+        local function add(id, group, title, enabled, fn, product)
             assert(not handlers[id], "Duplicate action " .. id)
-            table.insert(rows, {id=id, group=group, title=title, enabled=enabled})
+            table.insert(rows, {id=id, group=group, title=title, enabled=enabled == true, product=product})
             handlers[id] = {enabled=enabled, apply=fn, title=title}
         end
         local shop = C.shops[location]
@@ -133,12 +141,12 @@ function Engine.new(C, R, clock, random)
                         add("buy:"..id..":"..qty, def.raw and "Brutos" or "Processados", "Comprar "..qty.."x "..def.name.." | "..ask.." moedas | estoque "..stock,
                             stock>=qty and p.coins>=ask and (p.materials[id] or 0)+qty+(p.job and p.job.kind=="process" and p.job.id==id and p.job.qty or 0)<=10000, function()
                             p.coins-=ask;E.budget+=ask;E.stock[id]-=qty;grant(p,id,qty);marketTouch()
-                        end)
+                        end,{name=def.name, category=def.category, quantity=qty, price=ask, stock=stock, owned=p.materials[id] or 0, side="buy", kind=def.raw and "raw" or "processed"})
                         if shop.market and (p.materials[id] or 0)>=qty then
                             add("sell:"..id..":"..qty,"Vender materiais","Vender "..qty.."x "..def.name.." | "..bid.." moedas | possui "..p.materials[id],
                                 E.budget>=bid and stock+qty<=target(id)*3,function()
                                 consume(p,{[id]=qty});p.coins+=bid;E.budget-=bid;E.stock[id]+=qty;marketTouch()
-                            end)
+                            end,{name=def.name,category=def.category,quantity=qty,price=bid,stock=stock,owned=p.materials[id],side="sell",kind=def.raw and "raw" or "processed"})
                         end
                     end
                 end
@@ -148,10 +156,12 @@ function Engine.new(C, R, clock, random)
                 if matchShop(shop,C.recipes[item.recipe]) then
                     local base = itemPrice(item, countAt(item.recipe,item.rarity)-1)
                     local ask = shop.market and base or R.retail(base)
+                    local product=itemDetails(item)
+                    product.price=ask;product.side="buy";product.kind="equipment";product.quantity=1
                     add("buyitem:"..uid,"Comprar equipamentos","Comprar "..itemName(item).." | "..ask.." moedas",
                         p.coins>=ask and inventoryCount(p)+(p.job and p.job.kind=="craft" and p.job.qty or 0)<100, function()
                         p.coins -= ask; E.budget += ask; E.marketItems[uid] = nil; p.items[uid] = item; marketTouch()
-                    end)
+                    end,product)
                 end
             end
             if shop.market then
@@ -159,10 +169,12 @@ function Engine.new(C, R, clock, random)
                     local item = p.items[uid]
                     local count = countAt(item.recipe,item.rarity)
                     local price = itemPrice(item,count)
+                    local product=itemDetails(item)
+                    product.price=price;product.side="sell";product.kind="equipment";product.quantity=1
                     add("sellitem:"..uid,"Vender equipamentos","Vender "..itemName(item).." | "..price.." moedas",
                         count<12 and totalMarketItems<500 and E.budget>=price and p.main~=uid and p.off~=uid, function()
                         p.items[uid]=nil; E.marketItems[uid]=item; p.coins+=price; E.budget-=price; marketTouch()
-                    end)
+                    end,product)
                 end
             end
         end
@@ -242,11 +254,16 @@ function Engine.new(C, R, clock, random)
         if location==C.trainingLocation then
             add("train","Treinar","Treinar força (+1) | 10 moedas",p.coins>=10 and p.strength<100,function() p.coins-=10;p.strength+=1 end)
         end
-        local materials={}
+        local materials,materialDetails={},{}
+        local materialUnits=0
         for _,id in ipairs(sortedKeys(p.materials)) do
-            if p.materials[id]>0 then table.insert(materials,C.materials[id].name.." x"..p.materials[id]) end
+            if p.materials[id]>0 then
+                table.insert(materials,C.materials[id].name.." x"..p.materials[id])
+                table.insert(materialDetails,{id=id,name=C.materials[id].name,category=C.materials[id].category,quantity=p.materials[id],kind=C.materials[id].raw and "raw" or "processed"})
+                materialUnits+=p.materials[id]
+            end
         end
-        local items={}
+        local items,equipmentDetails={},{} 
         for _,uid in ipairs(sortedKeys(p.items)) do
             local item=p.items[uid]
             local r=C.recipes[item.recipe]
@@ -256,6 +273,9 @@ function Engine.new(C, R, clock, random)
             if p.main==uid then text..=" | Principal" end
             if p.off==uid then text..=" | Secundária" end
             table.insert(items,text)
+            local details=itemDetails(item)
+            details.slot=p.main==uid and "Principal" or p.off==uid and "Secundária" or "Inventário"
+            table.insert(equipmentDetails,details)
             local shield=r.category=="smallshield" or r.category=="largeshield"
             local valid=p.strength>=r.force and item.current>0
             if not shield then
@@ -285,6 +305,9 @@ function Engine.new(C, R, clock, random)
         local mastery={}
         for _,id in ipairs(sortedKeys(p.mastery)) do table.insert(mastery,C.recipes[id].name.." | "..p.mastery[id].."/100") end
         return {coins=p.coins,strength=p.strength,materials=materials,items=items,mastery=mastery,actions=rows,
+            shop=shop and {canSell=shop.market==true} or nil,
+            profile={materials=materialDetails,equipment=equipmentDetails,materialUnits=materialUnits,
+                equipmentCount=#equipmentDetails,learnedCount=#mastery,main=p.main,off=p.off},
             revision=p.revision,marketRevision=E.revision,location=location,
             job=p.job and ((p.job.kind=="craft" and C.recipes[p.job.id].name or C.materials[p.job.id].name).." x"..p.job.qty.." | "..math.max(0,math.ceil(p.job.ends-now)).."s") or "",
             budget=shop and shop.market and E.budget or nil},handlers

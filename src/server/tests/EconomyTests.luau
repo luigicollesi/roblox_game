@@ -37,11 +37,31 @@ function Tests.run()
         local ok=E.execute(profile,loc,studio==true,id,v.revision,v.marketRevision,row and row.title or "")
         assert(ok==expected,id.." expected "..tostring(expected))
     end
+    local Model=require(Shared.economy.ViewModel)
+    local marketView=E.view(p,market,false)
+    assert(marketView.shop.canSell and #marketView.profile.materials==0 and #marketView.profile.equipment==0)
+    local purchases=0
+    for _,row in ipairs(marketView.actions) do
+        if Model.matchesProduct(row,"Comprar","all") then
+            purchases+=1;assert(row.product.name and row.product.price>=0 and row.product.quantity>=1)
+            if row.product.kind=="equipment" then
+                assert(row.product.maximum>0 and row.product.current<=row.product.maximum and row.product.rarity)
+            end
+        end
+    end
+    assert(purchases==230)
+    assert(#Model.serviceTabs(marketView)==2 and Model.serviceTabs(marketView)[1]=="Comprar")
+    local normalShop=E.view(p,shop,false)
+    assert(normalShop.shop and not normalShop.shop.canSell and #Model.serviceTabs(normalShop)==1)
+    assert(#Model.serviceTabs(E.view(p,"valdoria.central",false))==0)
     local startMoney=p.coins
     local startBudget=E.budget
     local startStock=E.stock.iron_ore
     action(p,market,"buy:iron_ore:5",true)
     assert(p.materials.iron_ore==5 and E.stock.iron_ore==startStock-5)
+    local owned=E.view(p,market,false)
+    assert(owned.profile.materialUnits==5 and owned.profile.materials[1].quantity==5)
+    assert(owned.profile.equipmentCount==0)
     assert(p.coins+E.budget==startMoney+startBudget)
     action(p,market,"sell:iron_ore:5",true)
     assert(p.coins==startMoney and E.budget==startBudget and E.stock.iron_ore==startStock)
@@ -112,6 +132,8 @@ function Tests.run()
     action(p,market,"off:shield",true)
     action(p,market,"main:light",true)
     assert(p.main=="light" and p.off==nil)
+    local equipped=E.view(p,market,false)
+    assert(equipped.profile.main=="light" and equipped.profile.off==nil)
     action(p,market,"off:shield",false)
     action(p,market,"unequip:light",true)
     action(p,market,"off:shield",true)

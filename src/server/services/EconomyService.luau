@@ -35,6 +35,8 @@ function Service.start(remote, locations)
             return {ok=false,message="Solicitação inválida."}
         end
         local view=economy.view(profile,location,studio)
+        view.profile.displayName=player.DisplayName
+        view.profile.username=player.Name
         local actions={}
         for _,row in ipairs(view.actions) do if row.enabled then actions[row.id]=row.title end end
         local nextToken=(q and q.token or 0)+1

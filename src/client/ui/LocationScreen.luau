@@ -53,7 +53,13 @@ function Screen.mount(playerGui: PlayerGui, remote: RemoteFunction)
 	root.Parent = gui
 	local header = label(root, "Valdória | Navegação", 20, 44)
 	header.Position = UDim2.fromOffset(12, 0)
-	header.Size = UDim2.new(1, -24, 0, 44)
+	header.Size = UDim2.new(1, -154, 0, 44)
+	local canOpenProfile = false
+	local profileButton = button(root, "Meu perfil", true, function()
+		if canOpenProfile then EconomyScreen.open(gui, root, "profile") end
+	end)
+	profileButton.Position = UDim2.new(1, -138, 0, 2)
+	profileButton.Size = UDim2.fromOffset(126, 40)
 	local scroll = Instance.new("ScrollingFrame")
 	scroll.BackgroundTransparency = 1
 	scroll.BorderSizePixel = 0
@@ -81,6 +87,9 @@ function Screen.mount(playerGui: PlayerGui, remote: RemoteFunction)
 	end
 	local nav: {refresh: () -> (), move: (string) -> ()}
 	local function render(view: View)
+		canOpenProfile = view.snapshot ~= nil and not view.busy
+		profileButton.Active = canOpenProfile
+		profileButton.AutoButtonColor = canOpenProfile
 		for _, child in content:GetChildren() do if child ~= layout then child:Destroy() end end
 		order = 0
 		scroll.CanvasPosition = Vector2.zero
@@ -117,19 +126,31 @@ function Screen.mount(playerGui: PlayerGui, remote: RemoteFunction)
 			update()
 		end
 		if view.message ~= "" then add(label(content, view.message, 15, 42)) end
+		local function serviceName(id: string): string?
+			local shop = Catalog.shops[id]
+			if shop then return if shop.market then "Comprar e vender" else "Comprar produtos" end
+			if id == Catalog.learnLocation then return "Aprender receitas" end
+			if id == Catalog.trainingLocation then return "Treinar" end
+			for _, station in pairs(Catalog.stations) do
+				if station.location == id then return "Produzir e reparar" end
+			end
+			return nil
+		end
+		local service = serviceName(node.id)
+		local economicLocation = service ~= nil
+		if service then
+			add(button(content, service, not view.busy, function() EconomyScreen.open(gui, root, "services") end))
+		end
 		add(label(content, "Locais conectados", 18, 32))
 		for _, id in node.connections do
 			local destination = assert(Registry.get(id))
 			local title = destination.name .. "  |  " .. labels[destination.kind]
 			if id == node.parentId then title = "Sair para " .. destination.name end
+			local available = serviceName(id)
+			if available then title ..= " — " .. available end
 			local item = button(content, title, not view.busy, function() nav.move(id) end)
 			add(item)
 		end
-		local economicLocation = Catalog.shops[node.id] ~= nil or node.id == Catalog.learnLocation or node.id == Catalog.trainingLocation
-		for _, station in pairs(Catalog.stations) do
-			if station.location == node.id then economicLocation = true end
-		end
-		add(button(content, if economicLocation then "Abrir serviços econômicos / Inventário" else "Inventário / Equipamentos", not view.busy, function() EconomyScreen.open(gui, root) end))
 		if node.kind == "gate" then
 			add(label(content, "O exterior da capital ainda não está disponível.", 15, 52))
 		elseif not economicLocation and (node.kind == "establishment" or node.kind == "room") then
