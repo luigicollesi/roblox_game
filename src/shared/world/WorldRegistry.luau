@@ -24,13 +24,13 @@ function Registry.canMove(from: string, to: string): boolean
 end
 function Registry.breadcrumb(id: string): string
 	local parts = {}
-	local current = byId[id]
+	local current: Location? = Registry.get(id)
 	local visited = {}
 	while current do
 		assert(not visited[current.id], "Ciclo hierárquico")
 		visited[current.id] = true
 		table.insert(parts, 1, current.name)
-		current = if current.parentId then byId[current.parentId] else nil
+		current = if current.parentId then Registry.get(current.parentId) else nil
 	end
 	table.insert(parts, 1, data.cityName)
 	return table.concat(parts, " / ")
