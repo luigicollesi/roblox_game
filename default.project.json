@@ -1,0 +1,26 @@
+{
+  "name": "Valdoria",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Shared": {
+        "$path": "src/shared"
+      },
+      "Navigation": {
+        "$className": "RemoteFunction"
+      }
+    },
+    "ServerScriptService": {
+      "GameServer": {
+        "$path": "src/server"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "GameClient": {
+          "$path": "src/client"
+        }
+      }
+    }
+  }
+}

@@ -1,3 +1,3 @@
-# Valdória
+# Valdória — Fundação de navegação
 
-Fundação do jogo Roblox de navegação por interface.
+Jogo Roblox exclusivamente por UI. Nesta fase: capital e deslocamento entre locais, sem mecânicas econômicas ou combate. Veja `docs/architecture.md`.
