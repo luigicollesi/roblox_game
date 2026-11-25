@@ -100,7 +100,7 @@ function Screen.open(gui,root,mode)
         if view.job~="" then text("Produção: "..view.job.." | Atualize para receber",52,14) end
         local tabs=profileMode and Model.profileTabs(RunService:IsStudio()) or Model.serviceTabs(view)
         if #tabs==0 then text("Nenhum serviço disponível nesta localização. Entre na área interna correspondente.",76);resizeCanvas();return end
-        if not table.find(tabs,tab) then tab=tabs[1];page=1 end
+        if not tab or not table.find(tabs,tab) then tab=tabs[1];page=1 end
         local function choices(options,current,callback)
             local frame=Instance.new("Frame")
             frame.BackgroundTransparency=1;frame.Size=UDim2.new(1,0,0,math.ceil(#options/2)*44)
@@ -117,7 +117,7 @@ function Screen.open(gui,root,mode)
         for _,name in ipairs(tabs) do table.insert(options,{label=name,value=name}) end
         choices(options,tab,function(v) tab=v;kind="all" end)
         if not profileMode and view.shop then
-            choices({{label="Todos",value="all"},{label="Matérias-primas",value="raw"},{label="Processados",value="processed"},{label="Armas e escudos",value="equipment"}},kind,function(v) kind=v end)
+            choices({{label="Todos",value="all"},{label="Matérias-primas",value="raw"},{label="Processados",value="processed"},{label="Equipamentos",value="equipment"}},kind,function(v) kind=v end)
         end
         local query=normalized(search.Text)
         local function matches(s) return query=="" or string.find(normalized(s),query,1,true)~=nil end
@@ -155,14 +155,12 @@ function Screen.open(gui,root,mode)
         elseif profileMode and tab=="Teste Studio" then
             for _,row in ipairs(view.actions) do if row.group=="Teste Studio" and matches(row.title) then entry({action=row}) end end
         elseif view.shop then
-            for _,row in ipairs(view.actions) do
-                if Model.matchesProduct(row,tab,kind) and matchesDetail(row.product) then
-                    local product=row.product
-                    local detail
-                    if product.kind=="equipment" then detail=Model.itemText(product)
-                    else detail=Model.category(product.category).." | Estoque: "..product.stock.." | Você possui: "..product.owned end
-                    entry({heading=product.name,detail=detail,product=product,action=row})
-                end
+            for _,card in ipairs(Model.productCards(view.actions,tab,kind,matchesDetail)) do
+                local product=card.product
+                local detail
+                if product.kind=="equipment" then detail=Model.itemText(product)
+                else detail=Model.category(product.category).." | Estoque: "..product.stock.." | Você possui: "..product.owned end
+                entry({heading=product.name,detail=detail,product=product,tradeActions=card.actions})
             end
         else
             for _,row in ipairs(view.actions) do if row.group==tab and matches(row.title) then entry({action=row}) end end
@@ -190,10 +188,18 @@ function Screen.open(gui,root,mode)
                 local detail=label(card,row.detail,row.product and row.product.kind=="equipment" and 90 or row.actions and 100 or 48,14);detail.LayoutOrder=2
                 local height=12+34+detail.Size.Y.Offset+4
                 if row.product then
-                    local prod=row.product
-                    local price=label(card,prod.price.." moedas | "..prod.quantity.." unidade(s)",32,17);price.LayoutOrder=3
-                    local b=button(card,(tab=="Comprar" and "Comprar" or "Vender").." "..prod.quantity.."x"..(row.action.enabled and "" or " — indisponível"),row.action.enabled and not busy,function() request("act",row.action.id) end,C.buy)
-                    b.LayoutOrder=4;height+=32+44+8
+                    local verbs=tab=="Comprar" and "Comprar" or "Vender"
+                    for n,a in ipairs(row.tradeActions) do
+                        local prod=a.product
+                        local reason=""
+                        if not a.enabled then
+                            if tab=="Comprar" and prod.stock~=nil and prod.stock<prod.quantity then reason=" — sem estoque suficiente"
+                            elseif tab=="Comprar" and view.coins<prod.price then reason=" — saldo insuficiente"
+                            else reason=" — indisponível" end
+                        end
+                        local b=button(card,verbs.." "..prod.quantity.."x | "..prod.price.." moedas"..reason,a.enabled and not busy,function() request("act",a.id) end,C.buy)
+                        b.LayoutOrder=2+n;b.Size=UDim2.new(1,0,0,48);height+=52
+                    end
                 elseif row.actions then
                     for n,a in ipairs(row.actions) do action(a,card,2+n);height+=80 end
                 end

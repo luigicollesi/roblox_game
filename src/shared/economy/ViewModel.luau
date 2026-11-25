@@ -27,6 +27,24 @@ function M.matchesProduct(row,tab,kind)
     if not p then return false end
     return p.side==(tab=="Comprar" and "buy" or "sell") and (kind=="all" or p.kind==kind)
 end
+function M.productCards(rows,tab,kind,accept)
+    local cards,byKey={},{}
+    for _,row in ipairs(rows) do
+        if M.matchesProduct(row,tab,kind) and accept(row.product) then
+            local p=row.product
+            -- Equipment instances are unique; material sizes share one product card.
+            local key=p.kind=="equipment" and p.uid or string.match(row.id,"^[^:]+:([^:]+):")
+            key=p.kind..":"..(key or row.id)
+            local card=byKey[key]
+            if not card then
+                card={product=p,actions={}}
+                byKey[key]=card;table.insert(cards,card)
+            end
+            table.insert(card.actions,row)
+        end
+    end
+    return cards
+end
 function M.itemText(p)
     return M.category(p.category).." | "..p.rarity.." | Conservação: "..math.floor(p.current*100/p.maximum).."% ("..p.current.."/"..p.maximum..")\nDano: "..p.damage.." | Defesa: "..p.defense.." | Magia: "..p.magic.." | Peso: "..p.weight.." kg | Força mínima: "..p.force.." | "..p.hands.." mão(s)"
 end

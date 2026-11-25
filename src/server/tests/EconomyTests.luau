@@ -50,6 +50,14 @@ function Tests.run()
         end
     end
     assert(purchases==230)
+    local acceptAll=function() return true end
+    local cards=Model.productCards(marketView.actions,"Comprar","all",acceptAll)
+    assert(#cards==175)
+    assert(#Model.productCards(marketView.actions,"Comprar","raw",acceptAll)==26)
+    assert(#Model.productCards(marketView.actions,"Comprar","processed",acceptAll)==29)
+    assert(#Model.productCards(marketView.actions,"Comprar","equipment",acceptAll)==120)
+    assert(#Model.productCards(marketView.actions,"Vender","all",acceptAll)==0)
+    for _,card in ipairs(cards) do assert(#card.actions==(card.product.kind=="equipment" and 1 or 2)) end
     assert(#Model.serviceTabs(marketView)==2 and Model.serviceTabs(marketView)[1]=="Comprar")
     local normalShop=E.view(p,shop,false)
     assert(normalShop.shop and not normalShop.shop.canSell and #Model.serviceTabs(normalShop)==1)
