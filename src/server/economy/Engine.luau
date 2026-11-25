@@ -43,13 +43,6 @@ function Engine.new(C, R, clock, random)
         for id,q in pairs(inputs) do cost += materialPrice(id) * q end
         return cost
     end
-    local function marketCount(recipe, rarity)
-        local count = 0
-        for _,item in pairs(E.marketItems) do
-            if item.recipe == recipe and item.rarity == rarity then count += 1 end
-        end
-        return count
-    end
     local function itemPrice(item, count)
         local value = R.newValue(sumCost(C.recipes[item.recipe].inputs), item.rarity, count)
         return R.used(value, item.current, item.maximum)
@@ -138,7 +131,7 @@ function Engine.new(C, R, clock, random)
                             ask+=shop.market and unit or R.retail(unit)
                         end
                         add("buy:"..id..":"..qty, def.raw and "Brutos" or "Processados", "Comprar "..qty.."x "..def.name.." | "..ask.." moedas | estoque "..stock,
-                            stock>=qty and p.coins>=ask and (p.materials[id] or 0)+qty<=10000, function()
+                            stock>=qty and p.coins>=ask and (p.materials[id] or 0)+qty+(p.job and p.job.kind=="process" and p.job.id==id and p.job.qty or 0)<=10000, function()
                             p.coins-=ask;E.budget+=ask;E.stock[id]-=qty;grant(p,id,qty);marketTouch()
                         end)
                         if shop.market and (p.materials[id] or 0)>=qty then
@@ -178,7 +171,7 @@ function Engine.new(C, R, clock, random)
                 local recipe = C.recipes[id]
                 if p.mastery[id] == nil then
                     local fee = R.learnCost(recipe,C.materials)
-                    add("learn:"..id,"Aprender receitas",recipe.name.." | "..fee.." moedas",p.coins>=fee,function()
+                    add("learn:"..id,"Aprender receitas",recipe.name.." | "..fee.." moedas | "..materialsText(recipe.inputs).." | "..C.stations[recipe.station].name,p.coins>=fee,function()
                         p.coins-=fee; p.mastery[id]=0
                     end)
                 end
@@ -209,7 +202,7 @@ function Engine.new(C, R, clock, random)
                         local chances=R.chances(mastery)
                         for _,qty in ipairs({1,5}) do
                             local inputs=scaled(recipe.inputs,qty)
-                            add("craft:"..recipeId..":"..qty,"Fabricar",qty.."x "..recipe.name.." | "..materialsText(inputs).." | M"..mastery.." | "..table.concat(chances,"/").."% inicial | "..recipe.seconds*qty.."s",
+                            add("craft:"..recipeId..":"..qty,"Fabricar",qty.."x "..recipe.name.." | "..materialsText(inputs).." | M"..mastery.." | "..string.format("%d/%d/%d",chances[1],chances[2],chances[3]).."% inicial | "..recipe.seconds*qty.."s",
                                 rented and not p.job and has(p,inputs) and inventoryCount(p)+qty<=100,function()
                                 consume(p,inputs); p.job={kind="craft",id=recipeId,qty=qty,ends=clock()+recipe.seconds*qty}
                             end)
@@ -293,7 +286,7 @@ function Engine.new(C, R, clock, random)
         for _,id in ipairs(sortedKeys(p.mastery)) do table.insert(mastery,C.recipes[id].name.." | "..p.mastery[id].."/100") end
         return {coins=p.coins,strength=p.strength,materials=materials,items=items,mastery=mastery,actions=rows,
             revision=p.revision,marketRevision=E.revision,location=location,
-            job=p.job and (p.job.kind.." | "..p.job.id.." x"..p.job.qty.." | "..math.max(0,math.ceil(p.job.ends-now)).."s") or "",
+            job=p.job and ((p.job.kind=="craft" and C.recipes[p.job.id].name or C.materials[p.job.id].name).." x"..p.job.qty.." | "..math.max(0,math.ceil(p.job.ends-now)).."s") or "",
             budget=shop and shop.market and E.budget or nil},handlers
     end
     function E.execute(p, location, studio, id, revision, marketRevision, quotedTitle)

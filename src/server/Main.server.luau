@@ -19,6 +19,7 @@ local Protocol = require(Shared.network.Protocol)
 Validator.validate()
 if RunService:IsStudio() then
 	require(script.Parent.tests.NavigationTests).run()
+	require(script.Parent.tests.EconomyTests).run()
 end
 local remote = ReplicatedStorage:WaitForChild(Protocol.remoteName)
 assert(remote:IsA("RemoteFunction"), "Remote de navegação inválido")

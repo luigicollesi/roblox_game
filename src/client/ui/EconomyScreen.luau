@@ -1,7 +1,6 @@
 --!nonstrict
 -- Neutral test UI, isolated from navigation; no authoritative client calculations.
 local Screen={}
-local Players=game:GetService("Players")
 local remote=game:GetService("ReplicatedStorage"):WaitForChild("Economy")
 local function label(parent,text,height)
     local l=Instance.new("TextLabel")
@@ -31,7 +30,8 @@ function Screen.open(gui,root)
     header.Position=UDim2.fromOffset(10,0);header.Size=UDim2.new(1,-20,0,40)
     local close=button(panel,"Voltar à localização",true,function() root.Visible=true;panel:Destroy() end)
     close.Position=UDim2.new(0,10,0,42);close.Size=UDim2.new(1,-20,0,44)
-    local refresh=button(panel,"Atualizar dados",true,function() end)
+    local refresh=button(panel,"Atualizar dados",false,function() end)
+    refresh.Active=true;refresh.Selectable=true;refresh.AutoButtonColor=true;refresh.TextColor3=Color3.new(1,1,1)
     refresh.Position=UDim2.new(0,10,0,90);refresh.Size=UDim2.new(1,-20,0,44)
     local search=Instance.new("TextBox")
     search.Size=UDim2.new(1,-20,0,42);search.Position=UDim2.fromOffset(10,138)
@@ -101,9 +101,11 @@ function Screen.open(gui,root)
         for i=(page-1)*12+1,math.min(page*12,#entries) do
             local row=entries[i]
             if row.id then
-                add(button(body,row.title..(row.enabled and "" or " [indisponível]"),row.enabled and not busy,function()
+                local actionButton=button(body,row.title..(row.enabled and "" or " [indisponível]"),row.enabled and not busy,function()
                     request("act",row.id)
-                end))
+                end)
+                actionButton.Size=UDim2.new(1,0,0,80)
+                add(actionButton)
             else
                 add(label(body,row.title,60))
             end
