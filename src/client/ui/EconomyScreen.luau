@@ -54,6 +54,7 @@ function Screen.open(gui,root,mode)
     local kind="all"
     local quality="all"
     local family="all"
+    local familyExpanded=false
     local serial=0
     local request
     local function closePanel()
@@ -119,9 +120,9 @@ function Screen.open(gui,root,mode)
         end
         local options={}
         for _,name in ipairs(tabs) do table.insert(options,{label=name,value=name}) end
-        choices(options,tab,function(v) tab=v;kind="all";quality="all";family="all" end)
+        choices(options,tab,function(v) tab=v;kind="all";quality="all";family="all";familyExpanded=false end)
         if not profileMode and view.shop then
-            choices({{label="Todos",value="all"},{label="Matérias-primas",value="raw"},{label="Processados",value="processed"},{label="Equipamentos",value="equipment"}},kind,function(v) kind=v;family="all";quality="all" end)
+            choices({{label="Todos",value="all"},{label="Matérias-primas",value="raw"},{label="Processados",value="processed"},{label="Equipamentos",value="equipment"}},kind,function(v) kind=v;family="all";quality="all";familyExpanded=false end)
         end
         if (not profileMode and view.shop and kind=="equipment") or (profileMode and (tab=="Equipamentos" or tab=="Catálogo")) then
             local families={}
@@ -133,13 +134,15 @@ function Screen.open(gui,root,mode)
                 if b.value=="all" then return false end
                 return a.label<b.label
             end)
-            -- Compact cycling filter: no 16-button wall on mobile.
             local selected=1
             for i,option in ipairs(familyOptions) do if option.value==family then selected=i end end
-            local f=button(scroll,"Tipo: "..familyOptions[selected].label.." (toque para mudar)",not busy,function()
-                family=familyOptions[selected%#familyOptions+1].value;page=1;top();render()
+            local f=button(scroll,"Tipo: "..familyOptions[selected].label..(familyExpanded and " — fechar" or " — escolher"),not busy,function()
+                familyExpanded=not familyExpanded;render()
             end)
             add(f)
+            if familyExpanded then
+                choices(familyOptions,family,function(v) family=v;familyExpanded=false end)
+            end
             if tab~="Catálogo" then
                 choices({{label="Todas as qualidades",value="all"},{label="Comum",value="1"},{label="Superior",value="2"},{label="Obra-prima",value="3"}},quality,function(v) quality=v end)
             end
