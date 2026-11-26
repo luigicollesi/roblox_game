@@ -20,7 +20,7 @@ function Engine.new(C, R, clock, random)
     for id in pairs(C.materials) do E.stock[id] = target(id) end
     local function newItem(id, rarity)
         E.serial += 1
-        local max = math.floor(C.recipes[id].durability * R.durabilityPct[rarity] / 100)
+        local max = R.stats(C.recipes[id],rarity).maximum
         return {uid = "item_" .. E.serial, recipe = id, rarity = rarity, current = max, maximum = max}
     end
     for _,id in ipairs(sortedKeys(C.recipes)) do
@@ -75,11 +75,12 @@ function Engine.new(C, R, clock, random)
     end
     local function itemDetails(item)
         local r=C.recipes[item.recipe]
-        local quality=({1,1.15,1.35})[item.rarity]
-        local defense=({1,1.1,1.25})[item.rarity]
-        return {uid=item.uid, name=r.name, category=r.category, rarity=R.rarity[item.rarity],
-            current=item.current, maximum=item.maximum, weight=r.weight, force=r.force, hands=r.hands,
-            damage=math.floor(r.power*quality), defense=math.floor(r.defense*defense), magic=math.floor(r.magic*quality)}
+        local stats=R.stats(r,item.rarity)
+        stats.uid=item.uid;stats.recipeId=item.recipe;stats.name=r.name;stats.category=r.category
+        stats.rarity=R.rarity[item.rarity];stats.quality=item.rarity
+        stats.current=item.current;stats.maximum=item.maximum;stats.weight=r.weight;stats.force=r.force;stats.hands=r.hands
+        stats.description=r.description or "";stats.named=r.named==true
+        return stats
     end
     local function matchShop(shop, recipe)
         local shield = recipe.category == "smallshield" or recipe.category == "largeshield"
@@ -267,9 +268,8 @@ function Engine.new(C, R, clock, random)
         for _,uid in ipairs(sortedKeys(p.items)) do
             local item=p.items[uid]
             local r=C.recipes[item.recipe]
-            local quality=({1,1.15,1.35})[item.rarity]
-            local defense=({1,1.1,1.25})[item.rarity]
-            local text=itemName(item).." | "..uid.." | força "..r.force.." | "..r.weight.."kg | dano "..math.floor(r.power*quality).." | defesa "..math.floor(r.defense*defense).." | magia "..math.floor(r.magic*quality)
+            local stats=R.stats(r,item.rarity)
+            local text=itemName(item).." | "..uid.." | força "..r.force.." | "..r.weight.."kg | dano "..stats.damage.." | defesa "..stats.defense.." | magia "..stats.magic
             if p.main==uid then text..=" | Principal" end
             if p.off==uid then text..=" | Secundária" end
             table.insert(items,text)

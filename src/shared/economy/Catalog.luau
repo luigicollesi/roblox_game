@@ -172,4 +172,9 @@ Catalog.shops = {
 }
 Catalog.learnLocation = "valdoria.artesanal.guilda_produtores.recepcao"
 Catalog.trainingLocation = "valdoria.militar.treinamento.area_de_treinamento_fisico"
+-- Add named variants without changing IDs or ingredients of original recipes.
+for id, recipe in pairs(require(script.Parent.NamedWeapons)) do
+    assert(not Catalog.recipes[id], "Duplicate recipe: " .. id)
+    Catalog.recipes[id] = recipe
+end
 return Catalog

@@ -37,4 +37,21 @@ function Rules.learnCost(recipe, materials)
     for id, qty in pairs(recipe.inputs) do sum += materials[id].price * qty end
     return math.max(5, math.ceil(sum / 2))
 end
+-- Shared preview and authoritative calculation use identical arithmetic.
+local defaultDamageTypes = {sword="slash",greatsword="slash",shortkatana="slash",longkatana="slash",knife="slash",dagger="pierce",smallshield="none",largeshield="none",staff="arcane",wand="arcane",axe="slash",greataxe="slash",mace="blunt",warhammer="blunt",spear="pierce",halberd="slash"}
+function Rules.stats(recipe, rarity)
+    local attackPct=({100,115,135})[rarity]
+    local defensePct=({100,110,125})[rarity]
+    local baseDamage=recipe.power
+    local baseMagic=recipe.magic
+    local damageBonus=recipe.damageBonus or 0
+    local magicBonus=recipe.magicBonus or 0
+    local damage=math.floor((baseDamage+damageBonus)*attackPct/100)
+    local magic=math.floor((baseMagic+magicBonus)*attackPct/100)
+    return {damage=damage,defense=math.floor(recipe.defense*defensePct/100),magic=magic,
+        baseDamage=baseDamage,damageBonus=damageBonus,qualityDamageBonus=damage-baseDamage-damageBonus,
+        baseMagic=baseMagic,magicBonus=magicBonus,qualityMagicBonus=magic-baseMagic-magicBonus,
+        damageType=recipe.damageType or defaultDamageTypes[recipe.category] or "none",
+        maximum=math.floor(recipe.durability*Rules.durabilityPct[rarity]/100)}
+end
 return Rules

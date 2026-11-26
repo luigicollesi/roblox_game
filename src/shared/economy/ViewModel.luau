@@ -1,7 +1,7 @@
 --!nonstrict
 -- Pure presentation helpers: no pricing or authorization logic.
 local M={}
-local aliases={wood="Madeira",metal="Metal",stone="Pedra / cristal",leather="Couro",sword="Espada de uma mão",greatsword="Espada de duas mãos",shortkatana="Katana curta",longkatana="Katana longa",knife="Faca",dagger="Adaga",smallshield="Escudo pequeno",largeshield="Escudo grande",staff="Cajado",wand="Varinha"}
+local aliases={wood="Madeira",metal="Metal",stone="Pedra / cristal",leather="Couro",sword="Espada de uma mão",greatsword="Espada de duas mãos",shortkatana="Katana curta",longkatana="Katana longa",knife="Faca",dagger="Adaga",smallshield="Escudo pequeno",largeshield="Escudo grande",staff="Cajado",wand="Varinha",axe="Machado de uma mão",greataxe="Machado de duas mãos",mace="Maça",warhammer="Martelo de guerra",spear="Lança",halberd="Alabarda"}
 function M.category(id) return aliases[id] or id end
 function M.profileTabs(studio)
     local tabs={"Status","Inventário","Equipamentos","Maestria"}
@@ -45,7 +45,17 @@ function M.productCards(rows,tab,kind,accept)
     end
     return cards
 end
+local damageLabels={slash="Corte",pierce="Perfuração",blunt="Impacto",arcane="Arcano",none="Defensivo"}
+function M.statsText(p)
+    local result=M.category(p.category).." | "..p.rarity.." | "..(damageLabels[p.damageType] or "—").."\n"
+    result..="Dano: "..p.damage.." | Defesa: "..p.defense.." | Magia: "..p.magic.."\n"
+    if p.damage>0 then result..="Dano: "..p.baseDamage.." base + "..p.damageBonus.." modelo + "..p.qualityDamageBonus.." qualidade\n" end
+    if p.magic>0 then result..="Magia: "..p.baseMagic.." base + "..p.magicBonus.." modelo + "..p.qualityMagicBonus.." qualidade\n" end
+    result..="Peso: "..p.weight.." kg | Força mínima: "..p.force.." | "..p.hands.." mão(s)"
+    if p.description and p.description~="" then result..="\n"..p.description end
+    return result
+end
 function M.itemText(p)
-    return M.category(p.category).." | "..p.rarity.." | Conservação: "..math.floor(p.current*100/p.maximum).."% ("..p.current.."/"..p.maximum..")\nDano: "..p.damage.." | Defesa: "..p.defense.." | Magia: "..p.magic.." | Peso: "..p.weight.." kg | Força mínima: "..p.force.." | "..p.hands.." mão(s)"
+    return M.statsText(p).."\nConservação: "..math.floor(p.current*100/p.maximum).."% ("..p.current.."/"..p.maximum..")"
 end
 return M
