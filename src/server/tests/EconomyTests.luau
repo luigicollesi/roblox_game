@@ -8,16 +8,33 @@ local Engine=require(script.Parent.Parent.economy.Engine)
 local Tests={}
 function Tests.run()
     local function count(t) local n=0;for _ in pairs(t) do n+=1 end;return n end
-    assert(count(C.materials)==55 and count(C.recipes)==60 and count(C.processing)==29)
+    assert(count(C.materials)==55 and count(C.recipes)==108 and count(C.processing)==29)
     for location in pairs(C.shops) do assert(Registry.get(location),location) end
     for _,station in pairs(C.stations) do assert(Registry.get(station.location)) end
     assert(Registry.get(C.learnLocation) and Registry.get(C.trainingLocation))
+    local namedCount=0
+    local families={}
     for _,recipe in pairs(C.recipes) do
+        families[recipe.category]=true
+        if recipe.named then namedCount+=1;assert(recipe.description and recipe.damageType) end
+        local prev=nil
+        for quality=1,3 do
+            local stats=R.stats(recipe,quality)
+            assert(stats.damage==stats.baseDamage+stats.damageBonus+stats.qualityDamageBonus)
+            assert(stats.magic==stats.baseMagic+stats.magicBonus+stats.qualityMagicBonus)
+            if prev then assert(stats.damage>=prev.damage and stats.defense>=prev.defense and stats.magic>=prev.magic and stats.maximum>prev.maximum) end
+            prev=stats
+        end
         assert(C.stations[recipe.station])
         for id,q in pairs(recipe.inputs) do assert(C.materials[id] and not C.materials[id].raw and q>0) end
         for id,q in pairs(recipe.repair) do assert(recipe.inputs[id]==q) end
         if recipe.category=="staff" or recipe.category=="wand" then assert(recipe.force==0) end
     end
+    assert(namedCount==48 and count(families)==16)
+    assert(R.stats(C.recipes.sword_watch,1).damage==12)
+    assert(R.stats(C.recipes.sword_watch,3).damage==16)
+    assert(R.stats(C.recipes.staff_ember,1).magic==33)
+    assert(C.recipes.sword_iron.inputs.iron==3 and C.recipes.sword_iron.power==10)
     for m=0,100 do
         local p=R.chances(m);assert(p[1]+p[2]+p[3]==100)
         for n=1,100 do local r=R.roll(m,n);assert(r>=1 and r<=3 and (m>=10 or r==1) and (m>=50 or r~=3)) end
@@ -49,13 +66,13 @@ function Tests.run()
             end
         end
     end
-    assert(purchases==230)
+    assert(purchases==326)
     local acceptAll=function() return true end
     local cards=Model.productCards(marketView.actions,"Comprar","all",acceptAll)
-    assert(#cards==175)
+    assert(#cards==271)
     assert(#Model.productCards(marketView.actions,"Comprar","raw",acceptAll)==26)
     assert(#Model.productCards(marketView.actions,"Comprar","processed",acceptAll)==29)
-    assert(#Model.productCards(marketView.actions,"Comprar","equipment",acceptAll)==120)
+    assert(#Model.productCards(marketView.actions,"Comprar","equipment",acceptAll)==216)
     assert(#Model.productCards(marketView.actions,"Vender","all",acceptAll)==0)
     for _,card in ipairs(cards) do assert(#card.actions==(card.product.kind=="equipment" and 1 or 2)) end
     assert(#Model.serviceTabs(marketView)==2 and Model.serviceTabs(marketView)[1]=="Comprar")
@@ -145,6 +162,20 @@ function Tests.run()
     action(p,market,"off:shield",false)
     action(p,market,"unequip:light",true)
     action(p,market,"off:shield",true)
+    -- Separate mastery for named variants; no mastery inherited from iron sword.
+    local variant=E.profile(3)
+    action(variant,C.learnLocation,"learn:sword_watch",true)
+    assert(variant.mastery.sword_watch==0 and variant.mastery.sword_iron==nil)
+    action(variant,market,"buy:iron:5",true)
+    action(variant,market,"buy:oak:1",true)
+    action(variant,market,"buy:leather:1",true)
+    action(variant,forge,"rent:forge",true)
+    action(variant,forge,"craft:sword_watch:1",true)
+    now+=C.recipes.sword_watch.seconds;E.finish(variant)
+    assert(variant.mastery.sword_watch==5 and count(variant.items)==1)
+    local produced=E.view(variant,forge,false).profile.equipment[1]
+    assert(produced.name=="Lâmina da Vigília" and produced.rarity=="Comum" and produced.damage==12 and produced.maximum==120)
+    assert(variant.mastery.sword_iron==nil and p.mastery.sword_iron==mastery)
     now+=301
     action(p,forge,"craft:sword_iron:1",false)
     assert(p.coins>=0 and E.budget>=0 and other.items[uid]==nil)

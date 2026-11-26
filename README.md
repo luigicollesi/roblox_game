@@ -24,3 +24,7 @@ Veja [checklist de teste prático](docs/testing.md), [arquitetura](docs/architec
 ## Fase 2 — economia de armas
 
 Veja [regras e escopo](docs/economy.md) e [roteiro de teste](docs/economy-testing.md). A economia é compartilhada somente dentro do servidor e não é persistente nesta versão. O teste Studio agora também verifica o domínio econômico.
+
+## Expansão de armas
+
+[108 receitas, 16 famílias e teste prático](docs/weapons-expansion.md).

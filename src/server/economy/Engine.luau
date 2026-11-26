@@ -184,7 +184,7 @@ function Engine.new(C, R, clock, random)
                 local recipe = C.recipes[id]
                 if p.mastery[id] == nil then
                     local fee = R.learnCost(recipe,C.materials)
-                    add("learn:"..id,"Aprender receitas",recipe.name.." | "..fee.." moedas | "..materialsText(recipe.inputs).." | "..C.stations[recipe.station].name,p.coins>=fee,function()
+                    add("learn:"..id,"Aprender receitas",recipe.name.." | "..fee.." moedas | "..materialsText(recipe.inputs).." | "..C.stations[recipe.station].name.." | Dano "..R.stats(recipe,1).damage.." / Defesa "..R.stats(recipe,1).defense.." / Magia "..R.stats(recipe,1).magic,p.coins>=fee,function()
                         p.coins-=fee; p.mastery[id]=0
                     end)
                 end

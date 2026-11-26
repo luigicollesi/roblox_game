@@ -4,7 +4,7 @@ local M={}
 local aliases={wood="Madeira",metal="Metal",stone="Pedra / cristal",leather="Couro",sword="Espada de uma mão",greatsword="Espada de duas mãos",shortkatana="Katana curta",longkatana="Katana longa",knife="Faca",dagger="Adaga",smallshield="Escudo pequeno",largeshield="Escudo grande",staff="Cajado",wand="Varinha",axe="Machado de uma mão",greataxe="Machado de duas mãos",mace="Maça",warhammer="Martelo de guerra",spear="Lança",halberd="Alabarda"}
 function M.category(id) return aliases[id] or id end
 function M.profileTabs(studio)
-    local tabs={"Status","Inventário","Equipamentos","Maestria"}
+    local tabs={"Status","Inventário","Equipamentos","Maestria","Catálogo"}
     if studio then table.insert(tabs,"Teste Studio") end
     return tabs
 end
@@ -54,6 +54,19 @@ function M.statsText(p)
     result..="Peso: "..p.weight.." kg | Força mínima: "..p.force.." | "..p.hands.." mão(s)"
     if p.description and p.description~="" then result..="\n"..p.description end
     return result
+end
+function M.recipeText(recipe,materials,rules)
+    local parts={}
+    for id,qty in pairs(recipe.inputs) do table.insert(parts,qty.."x "..materials[id].name) end
+    table.sort(parts)
+    local lines={M.category(recipe.category).." | "..recipe.weight.." kg | Força mínima: "..recipe.force.." | "..recipe.hands.." mão(s)",
+        "Receita: "..table.concat(parts,", ")}
+    for quality=1,3 do
+        local s=rules.stats(recipe,quality)
+        table.insert(lines,rules.rarity[quality]..": dano "..s.damage.." | defesa "..s.defense.." | magia "..s.magic.." | durabilidade "..s.maximum)
+    end
+    if recipe.description then table.insert(lines,recipe.description) end
+    return table.concat(lines,"\n")
 end
 function M.itemText(p)
     return M.statsText(p).."\nConservação: "..math.floor(p.current*100/p.maximum).."% ("..p.current.."/"..p.maximum..")"

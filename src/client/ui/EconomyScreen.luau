@@ -5,6 +5,8 @@ local RS=game:GetService("ReplicatedStorage")
 local remote=RS:WaitForChild("Economy")
 local Registry=require(RS.Shared.world.WorldRegistry)
 local Model=require(RS.Shared.economy.ViewModel)
+local Catalog=require(RS.Shared.economy.Catalog)
+local Rules=require(RS.Shared.economy.Rules)
 local RunService=game:GetService("RunService")
 local C={bg=Color3.fromRGB(24,24,24),card=Color3.fromRGB(39,39,39),button=Color3.fromRGB(64,64,64),selected=Color3.fromRGB(89,81,58),text=Color3.fromRGB(245,245,245),muted=Color3.fromRGB(170,170,170),buy=Color3.fromRGB(58,89,65)}
 local function label(parent,text,height,size)
@@ -50,6 +52,8 @@ function Screen.open(gui,root,mode)
     local page=1
     local tab=nil
     local kind="all"
+    local quality="all"
+    local family="all"
     local serial=0
     local request
     local function closePanel()
@@ -115,15 +119,42 @@ function Screen.open(gui,root,mode)
         end
         local options={}
         for _,name in ipairs(tabs) do table.insert(options,{label=name,value=name}) end
-        choices(options,tab,function(v) tab=v;kind="all" end)
+        choices(options,tab,function(v) tab=v;kind="all";quality="all";family="all" end)
         if not profileMode and view.shop then
-            choices({{label="Todos",value="all"},{label="Matérias-primas",value="raw"},{label="Processados",value="processed"},{label="Equipamentos",value="equipment"}},kind,function(v) kind=v end)
+            choices({{label="Todos",value="all"},{label="Matérias-primas",value="raw"},{label="Processados",value="processed"},{label="Equipamentos",value="equipment"}},kind,function(v) kind=v;family="all";quality="all" end)
+        end
+        if (not profileMode and view.shop and kind=="equipment") or (profileMode and (tab=="Equipamentos" or tab=="Catálogo")) then
+            local families={}
+            for _,recipe in pairs(Catalog.recipes) do families[recipe.category]=true end
+            local familyOptions={{label="Todos os tipos",value="all"}}
+            for id in pairs(families) do table.insert(familyOptions,{label=Model.category(id),value=id}) end
+            table.sort(familyOptions,function(a,b)
+                if a.value=="all" then return b.value~="all" end
+                if b.value=="all" then return false end
+                return a.label<b.label
+            end)
+            -- Compact cycling filter: no 16-button wall on mobile.
+            local selected=1
+            for i,option in ipairs(familyOptions) do if option.value==family then selected=i end end
+            local f=button(scroll,"Tipo: "..familyOptions[selected].label.." (toque para mudar)",not busy,function()
+                family=familyOptions[selected%#familyOptions+1].value;page=1;top();render()
+            end)
+            add(f)
+            if tab~="Catálogo" then
+                choices({{label="Todas as qualidades",value="all"},{label="Comum",value="1"},{label="Superior",value="2"},{label="Obra-prima",value="3"}},quality,function(v) quality=v end)
+            end
         end
         local query=normalized(search.Text)
         local function matches(s) return query=="" or string.find(normalized(s),query,1,true)~=nil end
         local entries={}
         local function entry(item) table.insert(entries,item) end
-        local function matchesDetail(d) return matches(d.name.." "..Model.category(d.category).." "..(d.rarity or "")) end
+        local function matchesDetail(d)
+            if d.kind=="equipment" or d.uid then
+                if family~="all" and d.category~=family then return false end
+                if quality~="all" and tostring(d.quality)~=quality then return false end
+            end
+            return matches(d.name.." "..Model.category(d.category).." "..(d.rarity or "").." "..(d.description or ""))
+        end
         if profileMode and tab=="Status" then
             text(p.displayName.." (@"..p.username..")",48,21)
             text("Localização: "..Registry.breadcrumb(view.location),54)
@@ -149,6 +180,17 @@ function Screen.open(gui,root,mode)
             end
             for _,item in ipairs(p.equipment) do
                 if matchesDetail(item) then entry({heading=item.name,detail=item.slot.." | "..Model.itemText(item),actions=actions[item.uid] or {}}) end
+            end
+        elseif profileMode and tab=="Catálogo" then
+            local ids={}
+            for id in pairs(Catalog.recipes) do table.insert(ids,id) end
+            table.sort(ids,function(a,b) return Catalog.recipes[a].name<Catalog.recipes[b].name end)
+            for _,id in ipairs(ids) do
+                local r=Catalog.recipes[id]
+                local detail=Model.recipeText(r,Catalog.materials,Rules)
+                if (family=="all" or r.category==family) and matches(r.name.." "..detail) then
+                    entry({heading=r.name,detail=detail,catalog=true})
+                end
             end
         elseif profileMode and tab=="Maestria" then
             for _,s in ipairs(view.mastery) do if matches(s) then entry({heading=s,detail="Receita aprendida"}) end end
@@ -185,7 +227,8 @@ function Screen.open(gui,root,mode)
                 local pad=Instance.new("UIPadding");pad.PaddingLeft=UDim.new(0,8);pad.PaddingRight=UDim.new(0,8);pad.PaddingTop=UDim.new(0,6);pad.PaddingBottom=UDim.new(0,6);pad.Parent=card
                 list(card,4)
                 local heading=label(card,row.heading,34,18);heading.LayoutOrder=1
-                local detail=label(card,row.detail,row.product and row.product.kind=="equipment" and 90 or row.actions and 100 or 48,14);detail.LayoutOrder=2
+                local detail=label(card,row.detail,row.catalog and 220 or (row.product and row.product.kind=="equipment" or row.actions) and 192 or 48,14);detail.LayoutOrder=2
+                detail.TextYAlignment=Enum.TextYAlignment.Top
                 local height=12+34+detail.Size.Y.Offset+4
                 if row.product then
                     local verbs=tab=="Comprar" and "Comprar" or "Vender"
