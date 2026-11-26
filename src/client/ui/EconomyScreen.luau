@@ -8,6 +8,7 @@ local Model=require(RS.Shared.economy.ViewModel)
 local Catalog=require(RS.Shared.economy.Catalog)
 local Rules=require(RS.Shared.economy.Rules)
 local RunService=game:GetService("RunService")
+local TextService=game:GetService("TextService")
 local C={bg=Color3.fromRGB(24,24,24),card=Color3.fromRGB(39,39,39),button=Color3.fromRGB(64,64,64),selected=Color3.fromRGB(89,81,58),text=Color3.fromRGB(245,245,245),muted=Color3.fromRGB(170,170,170),buy=Color3.fromRGB(58,89,65)}
 local function label(parent,text,height,size)
     local l=Instance.new("TextLabel")
@@ -55,6 +56,7 @@ function Screen.open(gui,root,mode)
     local quality="all"
     local family="all"
     local familyExpanded=false
+    local priceOrder="low"
     local serial=0
     local request
     local function closePanel()
@@ -147,6 +149,11 @@ function Screen.open(gui,root,mode)
                 choices({{label="Todas as qualidades",value="all"},{label="Comum",value="1"},{label="Superior",value="2"},{label="Obra-prima",value="3"}},quality,function(v) quality=v end)
             end
         end
+        if not profileMode and view.shop then
+            add(button(scroll,priceOrder=="low" and "Preço: menor primeiro (alterar)" or "Preço: maior primeiro (alterar)",not busy,function()
+                priceOrder=priceOrder=="low" and "high" or "low";page=1;top();render()
+            end))
+        end
         local query=normalized(search.Text)
         local function matches(s) return query=="" or string.find(normalized(s),query,1,true)~=nil end
         local entries={}
@@ -190,7 +197,7 @@ function Screen.open(gui,root,mode)
             table.sort(ids,function(a,b) return Catalog.recipes[a].name<Catalog.recipes[b].name end)
             for _,id in ipairs(ids) do
                 local r=Catalog.recipes[id]
-                local detail=Model.recipeText(r,Catalog.materials,Rules)
+                local detail=Model.recipeText(r,Catalog.materials,Rules,id)
                 if (family=="all" or r.category==family) and matches(r.name.." "..detail) then
                     entry({heading=r.name,detail=detail,catalog=true})
                 end
@@ -209,6 +216,13 @@ function Screen.open(gui,root,mode)
             end
         else
             for _,row in ipairs(view.actions) do if row.group==tab and matches(row.title) then entry({action=row}) end end
+        end
+        if not profileMode and view.shop then
+            table.sort(entries,function(a,b)
+                local x,y=a.product.price,b.product.price
+                if x==y then return a.heading<b.heading end
+                return priceOrder=="low" and x<y or priceOrder=="high" and x>y
+            end)
         end
         local pages=math.max(1,math.ceil(#entries/8));page=math.clamp(page,1,pages)
         text(tab.." | "..#entries.." resultados | Página "..page.."/"..pages,38,16)
@@ -230,7 +244,9 @@ function Screen.open(gui,root,mode)
                 local pad=Instance.new("UIPadding");pad.PaddingLeft=UDim.new(0,8);pad.PaddingRight=UDim.new(0,8);pad.PaddingTop=UDim.new(0,6);pad.PaddingBottom=UDim.new(0,6);pad.Parent=card
                 list(card,4)
                 local heading=label(card,row.heading,34,18);heading.LayoutOrder=1
-                local detail=label(card,row.detail,row.catalog and 220 or (row.product and row.product.kind=="equipment" or row.actions) and 192 or 48,14);detail.LayoutOrder=2
+                local width=math.max(160,scroll.AbsoluteSize.X-36)
+                local detailHeight=math.max(48,math.ceil(TextService:GetTextSize(row.detail,14,Enum.Font.Gotham,Vector2.new(width,10000)).Y)+12)
+                local detail=label(card,row.detail,detailHeight,14);detail.LayoutOrder=2
                 detail.TextYAlignment=Enum.TextYAlignment.Top
                 local height=12+34+detail.Size.Y.Offset+4
                 if row.product then

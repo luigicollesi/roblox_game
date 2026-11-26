@@ -177,4 +177,8 @@ for id, recipe in pairs(require(script.Parent.NamedWeapons)) do
     assert(not Catalog.recipes[id], "Duplicate recipe: " .. id)
     Catalog.recipes[id] = recipe
 end
+for id, recipe in pairs(require(script.Parent.ExtremeWeapons)) do
+    assert(not Catalog.recipes[id], "Duplicate recipe: " .. id)
+    Catalog.recipes[id] = recipe
+end
 return Catalog

@@ -8,18 +8,24 @@ local Engine=require(script.Parent.Parent.economy.Engine)
 local Tests={}
 function Tests.run()
     local function count(t) local n=0;for _ in pairs(t) do n+=1 end;return n end
-    assert(count(C.materials)==55 and count(C.recipes)==108 and count(C.processing)==29)
+    assert(count(C.materials)==55 and count(C.recipes)==118 and count(C.processing)==29)
     for location in pairs(C.shops) do assert(Registry.get(location),location) end
     for _,station in pairs(C.stations) do assert(Registry.get(station.location)) end
     assert(Registry.get(C.learnLocation) and Registry.get(C.trainingLocation))
     local namedCount=0
     local families={}
-    for _,recipe in pairs(C.recipes) do
+    for recipeId,recipe in pairs(C.recipes) do
         families[recipe.category]=true
         if recipe.named then namedCount+=1;assert(recipe.description and recipe.damageType) end
         local prev=nil
         for quality=1,3 do
-            local stats=R.stats(recipe,quality)
+            local stats=R.stats(recipe,quality,recipeId)
+            local a=stats.attack
+            local sum=0;for _,hit in ipairs(a.hitDamage) do assert(hit>0);sum+=hit end
+            assert(sum==a.primaryDamage and #a.hitDamage==a.hits)
+            assert(a.maxActionDamage==sum+math.max(0,a.targets-1)*a.secondaryDamage)
+            assert(a.targets<=4 and a.hits<=3 and a.splashPct<=100)
+            if recipe.category=="smallshield" or recipe.category=="largeshield" then assert(a.hits==0 and a.targets==0 and sum==0) else assert(a.hits>=1 and a.targets>=1) end
             assert(stats.damage==stats.baseDamage+stats.damageBonus+stats.qualityDamageBonus)
             assert(stats.magic==stats.baseMagic+stats.magicBonus+stats.qualityMagicBonus)
             if prev then assert(stats.damage>=prev.damage and stats.defense>=prev.defense and stats.magic>=prev.magic and stats.maximum>prev.maximum) end
@@ -30,11 +36,23 @@ function Tests.run()
         for id,q in pairs(recipe.repair) do assert(recipe.inputs[id]==q) end
         if recipe.category=="staff" or recipe.category=="wand" then assert(recipe.force==0) end
     end
-    assert(namedCount==48 and count(families)==16)
+    assert(namedCount==58 and count(families)==16)
     assert(R.stats(C.recipes.sword_watch,1).damage==12)
     assert(R.stats(C.recipes.sword_watch,3).damage==16)
     assert(R.stats(C.recipes.staff_ember,1).magic==33)
     assert(C.recipes.sword_iron.inputs.iron==3 and C.recipes.sword_iron.power==10)
+    local fast=R.stats(C.recipes.dagger_comet,1,"dagger_comet").attack
+    assert(fast.hits==3 and fast.targets==1 and fast.primaryDamage==33 and fast.hitDamage[1]==11)
+    local area=R.stats(C.recipes.greatsword_eclipse,1,"greatsword_eclipse").attack
+    assert(area.hits==1 and area.targets==3 and area.secondaryDamage==52 and area.maxActionDamage==184)
+    assert(R.stats(C.recipes.staff_constellation,1,"staff_constellation").attack.maxActionDamage==235)
+    assert(R.stats(C.recipes.sword_recruit,1,"sword_recruit").damage==4)
+    local function materialCost(recipe)
+        local total=0;for id,q in pairs(recipe.inputs) do total+=C.materials[id].price*q end
+        return total
+    end
+    assert(materialCost(C.recipes.sword_recruit)<30)
+    assert(materialCost(C.recipes.greatsword_eclipse)>3000)
     for m=0,100 do
         local p=R.chances(m);assert(p[1]+p[2]+p[3]==100)
         for n=1,100 do local r=R.roll(m,n);assert(r>=1 and r<=3 and (m>=10 or r==1) and (m>=50 or r~=3)) end
@@ -66,13 +84,13 @@ function Tests.run()
             end
         end
     end
-    assert(purchases==326)
+    assert(purchases==346)
     local acceptAll=function() return true end
     local cards=Model.productCards(marketView.actions,"Comprar","all",acceptAll)
-    assert(#cards==271)
+    assert(#cards==291)
     assert(#Model.productCards(marketView.actions,"Comprar","raw",acceptAll)==26)
     assert(#Model.productCards(marketView.actions,"Comprar","processed",acceptAll)==29)
-    assert(#Model.productCards(marketView.actions,"Comprar","equipment",acceptAll)==216)
+    assert(#Model.productCards(marketView.actions,"Comprar","equipment",acceptAll)==236)
     assert(#Model.productCards(marketView.actions,"Vender","all",acceptAll)==0)
     for _,card in ipairs(cards) do assert(#card.actions==(card.product.kind=="equipment" and 1 or 2)) end
     assert(#Model.serviceTabs(marketView)==2 and Model.serviceTabs(marketView)[1]=="Comprar")

@@ -46,24 +46,36 @@ function M.productCards(rows,tab,kind,accept)
     return cards
 end
 local damageLabels={slash="Corte",pierce="Perfuração",blunt="Impacto",arcane="Arcano",none="Defensivo"}
+function M.attackText(a)
+    if a.hits==0 then return "Defensivo: sem ataque básico" end
+    local hitStrings={}
+    for _,d in ipairs(a.hitDamage) do table.insert(hitStrings,tostring(d)) end
+    local text=a.hits.." golpe(s) no alvo principal: "..table.concat(hitStrings," + ").." = "..a.primaryDamage.." por ação"
+    if a.targets>1 then
+        text..=" | Área: até "..a.targets.." alvos, "..a.secondaryDamage.." por alvo adicional ("..a.splashPct.."%) | Total máximo: "..a.maxActionDamage
+    else text..=" | Alvo único" end
+    return text
+end
 function M.statsText(p)
     local result=M.category(p.category).." | "..p.rarity.." | "..(damageLabels[p.damageType] or "—").."\n"
     result..="Dano: "..p.damage.." | Defesa: "..p.defense.." | Magia: "..p.magic.."\n"
     if p.damage>0 then result..="Dano: "..p.baseDamage.." base + "..p.damageBonus.." modelo + "..p.qualityDamageBonus.." qualidade\n" end
     if p.magic>0 then result..="Magia: "..p.baseMagic.." base + "..p.magicBonus.." modelo + "..p.qualityMagicBonus.." qualidade\n" end
     result..="Peso: "..p.weight.." kg | Força mínima: "..p.force.." | "..p.hands.." mão(s)"
+    result..="\n"..M.attackText(p.attack)
     if p.description and p.description~="" then result..="\n"..p.description end
     return result
 end
-function M.recipeText(recipe,materials,rules)
+function M.recipeText(recipe,materials,rules,recipeId)
     local parts={}
-    for id,qty in pairs(recipe.inputs) do table.insert(parts,qty.."x "..materials[id].name) end
+    local cost=0
+    for id,qty in pairs(recipe.inputs) do table.insert(parts,qty.."x "..materials[id].name);cost+=qty*materials[id].price end
     table.sort(parts)
     local lines={M.category(recipe.category).." | "..recipe.weight.." kg | Força mínima: "..recipe.force.." | "..recipe.hands.." mão(s)",
-        "Receita: "..table.concat(parts,", ")}
+        "Receita: "..table.concat(parts,", "), "Custo-base dos materiais: "..cost.." moedas (preços reais variam)"}
     for quality=1,3 do
-        local s=rules.stats(recipe,quality)
-        table.insert(lines,rules.rarity[quality]..": dano "..s.damage.." | defesa "..s.defense.." | magia "..s.magic.." | durabilidade "..s.maximum)
+        local s=rules.stats(recipe,quality,recipeId)
+        table.insert(lines,rules.rarity[quality]..": dano "..s.damage.." | defesa "..s.defense.." | magia "..s.magic.." | durabilidade "..s.maximum.."\n"..M.attackText(s.attack))
     end
     if recipe.description then table.insert(lines,recipe.description) end
     return table.concat(lines,"\n")

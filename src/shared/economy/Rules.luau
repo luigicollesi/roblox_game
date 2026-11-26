@@ -1,5 +1,6 @@
 --!nonstrict
 local Rules = {}
+local Attack = require(script.Parent.AttackProfiles)
 Rules.rarity = {"Comum", "Superior", "Obra-prima"}
 Rules.valuePct = {60, 120, 220}
 Rules.durabilityPct = {100, 135, 180}
@@ -39,7 +40,7 @@ function Rules.learnCost(recipe, materials)
 end
 -- Shared preview and authoritative calculation use identical arithmetic.
 local defaultDamageTypes = {sword="slash",greatsword="slash",shortkatana="slash",longkatana="slash",knife="slash",dagger="pierce",smallshield="none",largeshield="none",staff="arcane",wand="arcane",axe="slash",greataxe="slash",mace="blunt",warhammer="blunt",spear="pierce",halberd="slash"}
-function Rules.stats(recipe, rarity)
+function Rules.stats(recipe, rarity, recipeId)
     local attackPct=({100,115,135})[rarity]
     local defensePct=({100,110,125})[rarity]
     local baseDamage=recipe.power
@@ -48,10 +49,12 @@ function Rules.stats(recipe, rarity)
     local magicBonus=recipe.magicBonus or 0
     local damage=math.floor((baseDamage+damageBonus)*attackPct/100)
     local magic=math.floor((baseMagic+magicBonus)*attackPct/100)
-    return {damage=damage,defense=math.floor(recipe.defense*defensePct/100),magic=magic,
+    local result={damage=damage,defense=math.floor(recipe.defense*defensePct/100),magic=magic,
         baseDamage=baseDamage,damageBonus=damageBonus,qualityDamageBonus=damage-baseDamage-damageBonus,
         baseMagic=baseMagic,magicBonus=magicBonus,qualityMagicBonus=magic-baseMagic-magicBonus,
         damageType=recipe.damageType or defaultDamageTypes[recipe.category] or "none",
         maximum=math.floor(recipe.durability*Rules.durabilityPct[rarity]/100)}
+    result.attack=Attack.stats(recipe,recipeId,damage,magic)
+    return result
 end
 return Rules

@@ -20,7 +20,7 @@ function Engine.new(C, R, clock, random)
     for id in pairs(C.materials) do E.stock[id] = target(id) end
     local function newItem(id, rarity)
         E.serial += 1
-        local max = R.stats(C.recipes[id],rarity).maximum
+        local max = R.stats(C.recipes[id],rarity,id).maximum
         return {uid = "item_" .. E.serial, recipe = id, rarity = rarity, current = max, maximum = max}
     end
     for _,id in ipairs(sortedKeys(C.recipes)) do
@@ -75,11 +75,11 @@ function Engine.new(C, R, clock, random)
     end
     local function itemDetails(item)
         local r=C.recipes[item.recipe]
-        local stats=R.stats(r,item.rarity)
+        local stats=R.stats(r,item.rarity,item.recipe)
         stats.uid=item.uid;stats.recipeId=item.recipe;stats.name=r.name;stats.category=r.category
         stats.rarity=R.rarity[item.rarity];stats.quality=item.rarity
         stats.current=item.current;stats.maximum=item.maximum;stats.weight=r.weight;stats.force=r.force;stats.hands=r.hands
-        stats.description=r.description or "";stats.named=r.named==true
+        stats.description=r.description or "";stats.named=r.named==true;stats.tier=r.tier or "standard"
         return stats
     end
     local function matchShop(shop, recipe)
@@ -184,7 +184,7 @@ function Engine.new(C, R, clock, random)
                 local recipe = C.recipes[id]
                 if p.mastery[id] == nil then
                     local fee = R.learnCost(recipe,C.materials)
-                    add("learn:"..id,"Aprender receitas",recipe.name.." | "..fee.." moedas | "..materialsText(recipe.inputs).." | "..C.stations[recipe.station].name.." | Dano "..R.stats(recipe,1).damage.." / Defesa "..R.stats(recipe,1).defense.." / Magia "..R.stats(recipe,1).magic,p.coins>=fee,function()
+                    add("learn:"..id,"Aprender receitas",recipe.name.." | "..fee.." moedas | "..materialsText(recipe.inputs).." | "..C.stations[recipe.station].name.." | Dano "..R.stats(recipe,1,id).damage.." / Defesa "..R.stats(recipe,1,id).defense.." / Magia "..R.stats(recipe,1,id).magic,p.coins>=fee,function()
                         p.coins-=fee; p.mastery[id]=0
                     end)
                 end
@@ -268,7 +268,7 @@ function Engine.new(C, R, clock, random)
         for _,uid in ipairs(sortedKeys(p.items)) do
             local item=p.items[uid]
             local r=C.recipes[item.recipe]
-            local stats=R.stats(r,item.rarity)
+            local stats=R.stats(r,item.rarity,item.recipe)
             local text=itemName(item).." | "..uid.." | força "..r.force.." | "..r.weight.."kg | dano "..stats.damage.." | defesa "..stats.defense.." | magia "..stats.magic
             if p.main==uid then text..=" | Principal" end
             if p.off==uid then text..=" | Secundária" end
