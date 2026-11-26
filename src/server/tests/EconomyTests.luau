@@ -290,6 +290,46 @@ function Tests.run()
         assert(next(def.two) and next(def.four))
         for _,slot in ipairs(R.armorSlots) do assert(C.recipes["armor_"..id.."_"..slot].armorSlot==slot) end
     end
+    -- Exhaustive threshold checks for all collections, independently of market fixtures.
+    local bonusKeys={"attackPct","speedPct","defensePct","magicDefensePct","slashPct","piercePct","bluntPct","health","mana","magicDamagePct"}
+    for id,def in pairs(sets) do
+        local pieces={}
+        for n=0,4 do
+            if n>0 then
+                local recipeId="armor_"..id.."_"..R.armorSlots[n]
+                local quality=(n-1)%3+1
+                local item=R.stats(C.recipes[recipeId],quality,recipeId)
+                item.uid=recipeId;item.recipeId=recipeId;item.quality=quality;item.current=item.maximum
+                item.weight=C.recipes[recipeId].weight
+                table.insert(pieces,item)
+            end
+            local aggregate=R.loadoutSpecials(pieces)
+            for _,key in ipairs(bonusKeys) do
+                local expected=(n>=2 and (def.two[key] or 0) or 0)+(n==4 and (def.four[key] or 0) or 0)
+                assert(aggregate[key]==expected,id.." "..key.." "..n)
+            end
+            local effectCount=(n>=2 and #(def.two.effects or {}) or 0)+(n==4 and #(def.four.effects or {}) or 0)
+            assert(#aggregate.effects==effectCount,id.." effect threshold")
+            if n==0 then assert(#aggregate.sets==0)
+            else assert(#aggregate.sets==1 and aggregate.sets[1].count==n and aggregate.sets[1].twoActive==(n>=2) and aggregate.sets[1].fourActive==(n==4)) end
+        end
+        pieces[1].current=0
+        local broken=R.loadoutSpecials(pieces)
+        assert(broken.sets[1].count==3 and not broken.sets[1].fourActive)
+    end
+    local passiveLoad={effects={
+        {sourceRecipeId="sword_blood",sourceUid="blade",effect={kind="lifesteal",percent=50}},
+        {sourceRecipeId="armor_relic_devourer",sourceUid="mask",effect={kind="lifesteal",percent=15,scope="physicalBasic"}},
+        {sourceRecipeId="set:souleater",effect={kind="lifesteal",percent=30,scope="physicalBasic"}},
+        {sourceRecipeId="dagger_echo",sourceUid="otherBlade",effect={kind="followup",chancePct=40,damagePct=100}},
+        {sourceRecipeId="set:time",effect={kind="followup",chancePct=35,damagePct=100}},
+    }}
+    local pass=Specials.attackPassives(passiveLoad,"blade",true)
+    assert(pass.lifestealPct==50 and pass.followupChance==35)
+    pass=Specials.attackPassives(passiveLoad,"otherBlade",true)
+    assert(pass.lifestealPct==45 and pass.followupChance==40)
+    pass=Specials.attackPassives(passiveLoad,"magicWand",false)
+    assert(pass.lifestealPct==0 and pass.followupChance==35)
     local armorShop=E.view(armorPlayer,"valdoria.militar.armaduras.salao_de_vendas",false)
     local weaponShop=E.view(armorPlayer,"valdoria.militar.armas.salao_de_vendas",false)
     assert(#Model.productCards(armorShop.actions,"Comprar","armor",acceptAll)>0)

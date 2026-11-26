@@ -177,6 +177,7 @@ function Screen.open(gui,root,mode)
                 if special.armorPct>0 then text("Armadura de mana inicial: "..special.armorPct.."% da mana máxima",52) end
                 for _,spell in ipairs(special.spells) do text("Feitiço concedido: "..spell.name.." | "..spell.manaCost.." mana | recarga "..spell.cooldown.." turnos",64) end
                 text("Defesa física: "..special.defense.." | Defesa mágica: "..special.magicDefense.." | Peso equipado: "..string.format("%.1f",special.weight).." kg",70)
+                text("Resistências (pontos): corte "..special.resistances.slash.." | perfuração "..special.resistances.pierce.." | impacto "..special.resistances.blunt,64)
                 text("Ataque físico +"..special.attackPct.."% | Velocidade +"..special.speedPct.."% | Defesa física +"..special.defensePct.."% | Defesa mágica +"..special.magicDefensePct.."%",80)
                 for _,entry in ipairs(special.effects) do text(Model.effectText(entry.effect),90) end
                 for _,set in ipairs(special.sets) do text(set.name.." | "..set.count.."/4 | "..(set.fourActive and "Completo" or set.twoActive and "Parcial" or "Sem bônus"),64) end
