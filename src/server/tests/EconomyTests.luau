@@ -8,7 +8,7 @@ local Engine=require(script.Parent.Parent.economy.Engine)
 local Tests={}
 function Tests.run()
     local function count(t) local n=0;for _ in pairs(t) do n+=1 end;return n end
-    assert(count(C.materials)==55 and count(C.recipes)==126 and count(C.processing)==29)
+    assert(count(C.materials)==75 and count(C.recipes)==212 and count(C.processing)==40)
     for location in pairs(C.shops) do assert(Registry.get(location),location) end
     for _,station in pairs(C.stations) do assert(Registry.get(station.location)) end
     assert(Registry.get(C.learnLocation) and Registry.get(C.trainingLocation))
@@ -29,7 +29,7 @@ function Tests.run()
             assert(sum==a.primaryDamage and #a.hitDamage==a.hits)
             assert(a.maxActionDamage==sum+math.max(0,a.targets-1)*a.secondaryDamage)
             assert(a.targets<=4 and a.hits<=3 and a.splashPct<=100)
-            if recipe.category=="smallshield" or recipe.category=="largeshield" then assert(a.hits==0 and a.targets==0 and sum==0) else assert(a.hits>=1 and a.targets>=1) end
+            if recipe.armorSlot or recipe.category=="smallshield" or recipe.category=="largeshield" then assert(a.hits==0 and a.targets==0 and sum==0) else assert(a.hits>=1 and a.targets>=1) end
             assert(stats.damage==stats.baseDamage+stats.damageBonus+stats.qualityDamageBonus)
             assert(stats.magic==stats.baseMagic+stats.magicBonus+stats.qualityMagicBonus)
             if prev then assert(stats.damage>=prev.damage and stats.defense>=prev.defense and stats.magic>=prev.magic and stats.maximum>prev.maximum) end
@@ -40,7 +40,7 @@ function Tests.run()
         for id,q in pairs(recipe.repair) do assert(recipe.inputs[id]==q) end
         if recipe.category=="staff" or recipe.category=="wand" then assert(recipe.force==0) end
     end
-    assert(namedCount==66 and count(families)==16 and relicCount==8)
+    assert(namedCount==152 and count(families)==20 and relicCount==14)
     assert(R.stats(C.recipes.sword_watch,1).damage==12)
     assert(R.stats(C.recipes.sword_watch,3).damage==16)
     assert(R.stats(C.recipes.staff_ember,1).magic==33)
@@ -96,16 +96,16 @@ function Tests.run()
             end
         end
     end
-    assert(purchases==354)
+    assert(purchases==544)
     local relicStock=0
     for _,item in pairs(E.marketItems) do if C.recipes[item.recipe].tier=="relic" then relicStock+=1;assert(item.rarity==1) end end
-    assert(relicStock==8)
+    assert(relicStock==14)
     local acceptAll=function() return true end
     local cards=Model.productCards(marketView.actions,"Comprar","all",acceptAll)
-    assert(#cards==299)
-    assert(#Model.productCards(marketView.actions,"Comprar","raw",acceptAll)==26)
-    assert(#Model.productCards(marketView.actions,"Comprar","processed",acceptAll)==29)
-    assert(#Model.productCards(marketView.actions,"Comprar","equipment",acceptAll)==244)
+    assert(#cards==469)
+    assert(#Model.productCards(marketView.actions,"Comprar","raw",acceptAll)==35)
+    assert(#Model.productCards(marketView.actions,"Comprar","processed",acceptAll)==40)
+    assert(#Model.productCards(marketView.actions,"Comprar","equipment",acceptAll)==394)
     assert(#Model.productCards(marketView.actions,"Vender","all",acceptAll)==0)
     for _,card in ipairs(cards) do assert(#card.actions==(card.product.kind=="equipment" and 1 or 2)) end
     assert(#Model.serviceTabs(marketView)==2 and Model.serviceTabs(marketView)[1]=="Comprar")
@@ -236,6 +236,64 @@ function Tests.run()
     assert(load.mana==108 and load.magicDamagePct==27 and #load.spells==1 and relicPlayer.main==nil)
     assert(Specials.lifeHeal(blood.effect,0,100)==0)
     assert(Specials.openingBarrier({armorPct=70},201)==140)
+    -- Armor lifecycle, separate slots, mixed qualities, 2+2, replacement, breakage.
+    local armorPlayer=E.profile(5)
+    local tailor=C.stations.sewing.location
+    action(armorPlayer,market,"buy:cotton_raw:5",true)
+    action(armorPlayer,tailor,"rent:loom",true)
+    action(armorPlayer,tailor,"process:cotton:5",true)
+    now+=40;E.finish(armorPlayer)
+    assert(armorPlayer.materials.cotton==5)
+    action(armorPlayer,C.learnLocation,"learn:armor_peasant_head",true)
+    action(armorPlayer,tailor,"rent:sewing",true)
+    action(armorPlayer,tailor,"craft:armor_peasant_head:1",true)
+    now+=C.recipes.armor_peasant_head.seconds;E.finish(armorPlayer)
+    assert(armorPlayer.mastery.armor_peasant_head==5)
+    local head=next(armorPlayer.items)
+    action(armorPlayer,market,"main:"..head,false)
+    action(armorPlayer,market,"off:"..head,false)
+    action(armorPlayer,market,"armor:"..head,true)
+    action(armorPlayer,market,"sellitem:"..head,false)
+    for _,slot in ipairs({"torso","legs","feet"}) do
+        armorPlayer.items[slot]=fixture(slot,"armor_peasant_"..slot,2)
+        action(armorPlayer,market,"armor:"..slot,true)
+    end
+    local a=E.view(armorPlayer,market,false).profile.special
+    assert(#a.sets==1 and a.sets[1].count==4 and a.defensePct==5)
+    armorPlayer.items.travelFeet=fixture("travelFeet","armor_traveler_feet",1)
+    armorPlayer.items.travelLegs=fixture("travelLegs","armor_traveler_legs",3)
+    action(armorPlayer,market,"armor:travelFeet",true)
+    action(armorPlayer,market,"armor:travelLegs",true)
+    a=E.view(armorPlayer,market,false).profile.special
+    assert(#a.sets==2 and a.defensePct==2 and a.speedPct==3)
+    for _=1,4 do action(armorPlayer,market,"wear:travelFeet",true,true) end
+    a=E.view(armorPlayer,market,false).profile.special
+    assert(a.speedPct==0 and armorPlayer.armor.feet==nil)
+    action(armorPlayer,tailor,"fullrepair:travelFeet",true)
+    action(armorPlayer,market,"armor:travelFeet",true)
+    assert(E.view(armorPlayer,market,false).profile.special.speedPct==3)
+    armorPlayer.items.heavyTorso=fixture("heavyTorso","armor_immortal_torso",1)
+    action(armorPlayer,market,"armor:heavyTorso",false)
+    local legendary=E.profile(6)
+    for _,slot in ipairs(R.armorSlots) do
+        legendary.items[slot]=fixture(slot,"armor_divinity_"..slot,1)
+        action(legendary,market,"armor:"..slot,true)
+    end
+    a=E.view(legendary,market,false).profile.special
+    assert(a.mana==200 and a.magicDamagePct==20 and a.armorPct==100 and #a.spells==1 and a.spells[1].id=="celestial_collapse")
+    action(legendary,market,"unequip:head",true)
+    a=E.view(legendary,market,false).profile.special
+    assert(a.mana==200 and a.armorPct==0 and #a.spells==0)
+    local sets= C.sets
+    assert(count(sets)==20)
+    for id,def in pairs(sets) do
+        assert(next(def.two) and next(def.four))
+        for _,slot in ipairs(R.armorSlots) do assert(C.recipes["armor_"..id.."_"..slot].armorSlot==slot) end
+    end
+    local armorShop=E.view(armorPlayer,"valdoria.militar.armaduras.salao_de_vendas",false)
+    local weaponShop=E.view(armorPlayer,"valdoria.militar.armas.salao_de_vendas",false)
+    assert(#Model.productCards(armorShop.actions,"Comprar","armor",acceptAll)>0)
+    assert(#Model.productCards(weaponShop.actions,"Comprar","armor",acceptAll)==0)
     now+=301
     action(p,forge,"craft:sword_iron:1",false)
     assert(p.coins>=0 and E.budget>=0 and other.items[uid]==nil)

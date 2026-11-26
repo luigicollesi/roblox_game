@@ -28,3 +28,7 @@ Veja [regras e escopo](docs/economy.md) e [roteiro de teste](docs/economy-testin
 ## Expansão de armas
 
 [108 receitas, 16 famílias e teste prático](docs/weapons-expansion.md).
+
+## Fase 3 — armaduras e coleções
+
+[Economia, regras de conjuntos e roteiro de teste](docs/armor-economy.md).

@@ -124,11 +124,13 @@ function Screen.open(gui,root,mode)
         for _,name in ipairs(tabs) do table.insert(options,{label=name,value=name}) end
         choices(options,tab,function(v) tab=v;kind="all";quality="all";family="all";familyExpanded=false end)
         if not profileMode and view.shop then
-            choices({{label="Todos",value="all"},{label="Matérias-primas",value="raw"},{label="Processados",value="processed"},{label="Equipamentos",value="equipment"}},kind,function(v) kind=v;family="all";quality="all";familyExpanded=false end)
+            choices({{label="Todos",value="all"},{label="Matérias-primas",value="raw"},{label="Processados",value="processed"},{label="Armas e escudos",value="weapon"},{label="Armaduras",value="armor"}},kind,function(v) kind=v;family="all";quality="all";familyExpanded=false end)
         end
-        if (not profileMode and view.shop and kind=="equipment") or (profileMode and (tab=="Equipamentos" or tab=="Catálogo")) then
+        if (not profileMode and view.shop and (kind=="equipment" or kind=="armor" or kind=="weapon")) or (profileMode and (tab=="Equipamentos" or tab=="Catálogo")) then
             local families={}
-            for _,recipe in pairs(Catalog.recipes) do families[recipe.category]=true end
+            for _,recipe in pairs(Catalog.recipes) do
+                if profileMode or kind=="equipment" or (kind=="armor" and recipe.armorSlot) or (kind=="weapon" and not recipe.armorSlot) then families[recipe.category]=true end
+            end
             local familyOptions={{label="Todos os tipos",value="all"}}
             for id in pairs(families) do table.insert(familyOptions,{label=Model.category(id),value=id}) end
             table.sort(familyOptions,function(a,b)
@@ -163,7 +165,7 @@ function Screen.open(gui,root,mode)
                 if family~="all" and d.category~=family then return false end
                 if quality~="all" and tostring(d.quality)~=quality then return false end
             end
-            return matches(d.name.." "..Model.category(d.category).." "..(d.rarity or "").." "..(d.description or "").." "..(d.special and Model.specialText(d.special) or ""))
+            return matches(d.name.." "..Model.category(d.category).." "..(d.rarity or "").." "..(d.description or "").." "..(d.setId and Model.setText(d.setId) or "").." "..(d.special and Model.specialText(d.special) or ""))
         end
         if profileMode and tab=="Status" then
             text(p.displayName.." (@"..p.username..")",48,21)
@@ -174,11 +176,10 @@ function Screen.open(gui,root,mode)
                 text("Bônus dos equipamentos: vida máxima +"..special.health.." | mana máxima +"..special.mana.." | dano mágico +"..special.magicDamagePct.."%",74)
                 if special.armorPct>0 then text("Armadura de mana inicial: "..special.armorPct.."% da mana máxima",52) end
                 for _,spell in ipairs(special.spells) do text("Feitiço concedido: "..spell.name.." | "..spell.manaCost.." mana | recarga "..spell.cooldown.." turnos",64) end
-                for _,entry in ipairs(special.effects) do
-                    local e=entry.effect
-                    if e.kind=="lifesteal" then text("Roubo de vida: "..e.percent.."% (arma de origem)",44)
-                    elseif e.kind=="followup" then text("Golpe adicional: "..e.chancePct.."% (arma de origem)",44) end
-                end
+                text("Defesa física: "..special.defense.." | Defesa mágica: "..special.magicDefense.." | Peso equipado: "..string.format("%.1f",special.weight).." kg",70)
+                text("Ataque físico +"..special.attackPct.."% | Velocidade +"..special.speedPct.."% | Defesa física +"..special.defensePct.."% | Defesa mágica +"..special.magicDefensePct.."%",80)
+                for _,entry in ipairs(special.effects) do text(Model.effectText(entry.effect),90) end
+                for _,set in ipairs(special.sets) do text(set.name.." | "..set.count.."/4 | "..(set.fourActive and "Completo" or set.twoActive and "Parcial" or "Sem bônus"),64) end
                 if #special.effects>0 then text("Bônus configurados; ativação em combate será implementada posteriormente.",52,14) end
             end
             text("Materiais: "..p.materialUnits.." unidades | Equipamentos: "..p.equipmentCount.."/100 | Receitas: "..p.learnedCount,62)
@@ -188,6 +189,11 @@ function Screen.open(gui,root,mode)
                 if item.uid==p.off then off=item.name.." / "..item.rarity end
             end
             text("Mão principal: "..main,58);text("Mão secundária: "..off,58)
+            for _,slot in ipairs(Rules.armorSlots) do
+                local name="Vazio"
+                for _,item in ipairs(p.equipment) do if item.uid==p.armor[slot] then name=item.name.." / "..item.rarity end end
+                text(Rules.slotLabels[slot]..": "..name,58)
+            end
             text("Outros atributos de combate e progressão ainda não foram implementados.",62,14)
             resizeCanvas();return
         elseif profileMode and tab=="Inventário" then
@@ -202,6 +208,16 @@ function Screen.open(gui,root,mode)
             end
             for _,item in ipairs(p.equipment) do
                 if matchesDetail(item) then entry({heading=item.name,detail=item.slot.." | "..Model.itemText(item),actions=actions[item.uid] or {}}) end
+            end
+        elseif profileMode and tab=="Conjuntos" then
+            local ids={}
+            for id in pairs(Catalog.sets) do table.insert(ids,id) end
+            table.sort(ids,function(a,b) return Catalog.sets[a].name<Catalog.sets[b].name end)
+            for _,id in ipairs(ids) do
+                local n=0
+                for _,active in ipairs(p.special.sets) do if active.id==id then n=active.count end end
+                local detail=Model.setText(id).."\nEquipadas e íntegras: "..n.."/4 | "..(n==4 and "Completo" or n>=2 and "Parcial" or "Sem bônus ativo")
+                if matches(detail) then entry({heading=Catalog.sets[id].name,detail=detail,catalog=true}) end
             end
         elseif profileMode and tab=="Catálogo" then
             local ids={}
