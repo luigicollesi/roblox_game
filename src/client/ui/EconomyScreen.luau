@@ -163,12 +163,24 @@ function Screen.open(gui,root,mode)
                 if family~="all" and d.category~=family then return false end
                 if quality~="all" and tostring(d.quality)~=quality then return false end
             end
-            return matches(d.name.." "..Model.category(d.category).." "..(d.rarity or "").." "..(d.description or ""))
+            return matches(d.name.." "..Model.category(d.category).." "..(d.rarity or "").." "..(d.description or "").." "..(d.special and Model.specialText(d.special) or ""))
         end
         if profileMode and tab=="Status" then
             text(p.displayName.." (@"..p.username..")",48,21)
             text("Localização: "..Registry.breadcrumb(view.location),54)
             text("Força: "..view.strength.." | Patrimônio em moedas: "..view.coins,44)
+            local special=p.special
+            if special then
+                text("Bônus dos equipamentos: vida máxima +"..special.health.." | mana máxima +"..special.mana.." | dano mágico +"..special.magicDamagePct.."%",74)
+                if special.armorPct>0 then text("Armadura de mana inicial: "..special.armorPct.."% da mana máxima",52) end
+                for _,spell in ipairs(special.spells) do text("Feitiço concedido: "..spell.name.." | "..spell.manaCost.." mana | recarga "..spell.cooldown.." turnos",64) end
+                for _,entry in ipairs(special.effects) do
+                    local e=entry.effect
+                    if e.kind=="lifesteal" then text("Roubo de vida: "..e.percent.."% (arma de origem)",44)
+                    elseif e.kind=="followup" then text("Golpe adicional: "..e.chancePct.."% (arma de origem)",44) end
+                end
+                if #special.effects>0 then text("Bônus configurados; ativação em combate será implementada posteriormente.",52,14) end
+            end
             text("Materiais: "..p.materialUnits.." unidades | Equipamentos: "..p.equipmentCount.."/100 | Receitas: "..p.learnedCount,62)
             local main,off="Vazia","Vazia"
             for _,item in ipairs(p.equipment) do

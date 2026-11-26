@@ -24,7 +24,7 @@ function Engine.new(C, R, clock, random)
         return {uid = "item_" .. E.serial, recipe = id, rarity = rarity, current = max, maximum = max}
     end
     for _,id in ipairs(sortedKeys(C.recipes)) do
-        for rarity = 1, 2 do
+        for rarity = 1, (C.recipes[id].tier=="relic" and 1 or 2) do
             local item = newItem(id, rarity)
             E.marketItems[item.uid] = item
         end
@@ -264,7 +264,7 @@ function Engine.new(C, R, clock, random)
                 materialUnits+=p.materials[id]
             end
         end
-        local items,equipmentDetails={},{} 
+        local items,equipmentDetails,equippedDetails={},{},{} 
         for _,uid in ipairs(sortedKeys(p.items)) do
             local item=p.items[uid]
             local r=C.recipes[item.recipe]
@@ -276,6 +276,7 @@ function Engine.new(C, R, clock, random)
             local details=itemDetails(item)
             details.slot=p.main==uid and "Principal" or p.off==uid and "Secundária" or "Inventário"
             table.insert(equipmentDetails,details)
+            if p.main==uid or p.off==uid then table.insert(equippedDetails,details) end
             local shield=r.category=="smallshield" or r.category=="largeshield"
             local valid=p.strength>=r.force and item.current>0
             if not shield then
@@ -307,7 +308,8 @@ function Engine.new(C, R, clock, random)
         return {coins=p.coins,strength=p.strength,materials=materials,items=items,mastery=mastery,actions=rows,
             shop=shop and {canSell=shop.market==true} or nil,
             profile={materials=materialDetails,equipment=equipmentDetails,materialUnits=materialUnits,
-                equipmentCount=#equipmentDetails,learnedCount=#mastery,main=p.main,off=p.off},
+                equipmentCount=#equipmentDetails,learnedCount=#mastery,main=p.main,off=p.off,
+                special=R.loadoutSpecials(equippedDetails)},
             revision=p.revision,marketRevision=E.revision,location=location,
             job=p.job and ((p.job.kind=="craft" and C.recipes[p.job.id].name or C.materials[p.job.id].name).." x"..p.job.qty.." | "..math.max(0,math.ceil(p.job.ends-now)).."s") or "",
             budget=shop and shop.market and E.budget or nil},handlers

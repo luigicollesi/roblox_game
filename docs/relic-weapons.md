@@ -1,0 +1,16 @@
+# Relíquias de alto valor
+
+8 modelos novos; 126 receitas e 378 combinações de modelo/qualidade. Relíquia é a categoria econômica do modelo, não uma quarta qualidade. Somente estas receitas possuem bônus globais e efeitos especiais. Os modelos anteriores permanecem intactos. Custo-base superior a 5.000 moedas; cada relíquia começa com uma única instância comum no mercado, outras qualidades dependem da fabricação e revenda. Aprendizado, reparo, maestria, peso e preços continuam pelas regras anteriores. Não há restrição de inteligência ou mana para equipar.
+
+## Atributos e contrato de combate
+- Vida máxima e mana máxima: bônus fixos, somados aos atributos futuros do personagem. Não criam vida atual nem mana atual. Dano mágico global percentual: aplicado uma vez antes da defesa, só ao dano mágico, não à cura/físico. Qualidade multiplica bônus numéricos em 100/115/135%, arredondados para baixo. Efeitos únicos e feitiços não mudam com qualidade.
+- Pacto Carmesim: cura 50% do HP efetivamente removido pelo ataque básico da própria arma, depois de defesa, barreira e excesso de dano; soma dos alvos, limitada à vida faltante, uma vez por ação. Não considera dano de proc ou feitiço.
+- Eco: uma tentativa após o primeiro golpe primário bem-sucedido, somente se o alvo continuar vivo; golpe adicional com o dano bruto do primeiro, sujeito à resolução normal, sem encadeamento nem novo turno. Chance de 25% Réquiem ou 40% Eco do Abismo.
+- Armadura de mana: barreira extra de 50% (Trono Astral) ou 70% (Égide) da mana máxima, no início do encontro, sem consumir mana. Absorve dano antes do HP, sem renovar por troca de equipamento. Se coexistirem, maior percentual.
+- Feitiços: Chamas da Fênix (70 mana, recarga 3 turnos próprios, dano mágico 160 por alvo, até 3 inimigos); Onda da Misericórdia (85 mana, recarga 4, cura base 100 por alvo, até 3 aliados incluindo próprio); Corte do Firmamento (45 mana, recarga 2, dano mágico 110, um inimigo). Consomem uma ação, não podem ser usados sem arma equipada e íntegra; não aprendidos permanentemente. Recarga inicia após uso e impede repetir pelos próximos N turnos próprios.
+- Equipamento quebrado ou desequipado não concede bônus. Mesmo modelo conta uma vez pela maior qualidade; modelos distintos somam vida/mana e bônus mágico até 60%. Efeitos de ataque vinculados à arma de origem; feitiços deduplicados. Combate futuro deve congelar equipamento no encontro e impedir troca para reiniciar recargas/barreira.
+
+Implementado: dados, fórmulas puras, agregação autoritativa dos equipamentos ativos, exibição em catálogo, comércio e perfil, testes de domínio. Não implementado: vida/mana atuais, motor de turnos, aplicação real de dano/feitiços, PvP e persistência. Funções puras não são chamadas por combate ainda.
+
+## Teste
+Atualize pelo Rojo e inicie Play. Meu perfil → Catálogo → busque Relíquia ou nome do modelo. Compare qualidades, receitas e poderes. Mercado: procure pela relíquia comum; compra exige saldo. Equipar/desequipar altera os bônus do perfil. Testes de Studio incluem duas cópias da mesma relíquia, arma de duas mãos, cura, barreira, chance de golpe extra, feitiços e estoque inicial (244 equipamentos, 299 cartões, 354 ações de compra). Não executar efeitos de combate manualmente como se o combate estivesse disponível.

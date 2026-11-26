@@ -8,19 +8,23 @@ local Engine=require(script.Parent.Parent.economy.Engine)
 local Tests={}
 function Tests.run()
     local function count(t) local n=0;for _ in pairs(t) do n+=1 end;return n end
-    assert(count(C.materials)==55 and count(C.recipes)==118 and count(C.processing)==29)
+    assert(count(C.materials)==55 and count(C.recipes)==126 and count(C.processing)==29)
     for location in pairs(C.shops) do assert(Registry.get(location),location) end
     for _,station in pairs(C.stations) do assert(Registry.get(station.location)) end
     assert(Registry.get(C.learnLocation) and Registry.get(C.trainingLocation))
     local namedCount=0
+    local relicCount=0
+    local Specials=require(Shared.economy.SpecialEffects)
     local families={}
     for recipeId,recipe in pairs(C.recipes) do
         families[recipe.category]=true
+        if recipe.tier=="relic" then relicCount+=1;assert(recipe.bonuses and recipe.effect) else assert(not recipe.bonuses and not recipe.effect) end
         if recipe.named then namedCount+=1;assert(recipe.description and recipe.damageType) end
         local prev=nil
         for quality=1,3 do
             local stats=R.stats(recipe,quality,recipeId)
             local a=stats.attack
+            assert((stats.special~=nil)==(recipe.tier=="relic"))
             local sum=0;for _,hit in ipairs(a.hitDamage) do assert(hit>0);sum+=hit end
             assert(sum==a.primaryDamage and #a.hitDamage==a.hits)
             assert(a.maxActionDamage==sum+math.max(0,a.targets-1)*a.secondaryDamage)
@@ -36,7 +40,7 @@ function Tests.run()
         for id,q in pairs(recipe.repair) do assert(recipe.inputs[id]==q) end
         if recipe.category=="staff" or recipe.category=="wand" then assert(recipe.force==0) end
     end
-    assert(namedCount==58 and count(families)==16)
+    assert(namedCount==66 and count(families)==16 and relicCount==8)
     assert(R.stats(C.recipes.sword_watch,1).damage==12)
     assert(R.stats(C.recipes.sword_watch,3).damage==16)
     assert(R.stats(C.recipes.staff_ember,1).magic==33)
@@ -53,6 +57,14 @@ function Tests.run()
     end
     assert(materialCost(C.recipes.sword_recruit)<30)
     assert(materialCost(C.recipes.greatsword_eclipse)>3000)
+    for _,recipe in pairs(C.recipes) do if recipe.tier=="relic" then assert(materialCost(recipe)>5000) end end
+    local blood=R.stats(C.recipes.sword_blood,1,"sword_blood").special
+    assert(blood.health==45 and blood.effect.percent==50 and Specials.lifeHeal(blood.effect,71,100)==35 and Specials.lifeHeal(blood.effect,71,12)==12)
+    local echo=R.stats(C.recipes.dagger_echo,1,"dagger_echo").special.effect
+    assert(Specials.followup(echo,30,40,true,false)==30 and Specials.followup(echo,30,41,true,false)==0)
+    assert(Specials.followup(echo,30,1,true,true)==0 and Specials.followup(echo,30,1,false,false)==0)
+    assert(Specials.magicDamage(101,25)==126 and Specials.magicDamage(100,90)==160)
+    assert(R.stats(C.recipes.wand_phoenix,3,"wand_phoenix").special.effect.spell.manaCost==70)
     for m=0,100 do
         local p=R.chances(m);assert(p[1]+p[2]+p[3]==100)
         for n=1,100 do local r=R.roll(m,n);assert(r>=1 and r<=3 and (m>=10 or r==1) and (m>=50 or r~=3)) end
@@ -84,13 +96,16 @@ function Tests.run()
             end
         end
     end
-    assert(purchases==346)
+    assert(purchases==354)
+    local relicStock=0
+    for _,item in pairs(E.marketItems) do if C.recipes[item.recipe].tier=="relic" then relicStock+=1;assert(item.rarity==1) end end
+    assert(relicStock==8)
     local acceptAll=function() return true end
     local cards=Model.productCards(marketView.actions,"Comprar","all",acceptAll)
-    assert(#cards==291)
+    assert(#cards==299)
     assert(#Model.productCards(marketView.actions,"Comprar","raw",acceptAll)==26)
     assert(#Model.productCards(marketView.actions,"Comprar","processed",acceptAll)==29)
-    assert(#Model.productCards(marketView.actions,"Comprar","equipment",acceptAll)==236)
+    assert(#Model.productCards(marketView.actions,"Comprar","equipment",acceptAll)==244)
     assert(#Model.productCards(marketView.actions,"Vender","all",acceptAll)==0)
     for _,card in ipairs(cards) do assert(#card.actions==(card.product.kind=="equipment" and 1 or 2)) end
     assert(#Model.serviceTabs(marketView)==2 and Model.serviceTabs(marketView)[1]=="Comprar")
@@ -194,6 +209,23 @@ function Tests.run()
     local produced=E.view(variant,forge,false).profile.equipment[1]
     assert(produced.name=="Lâmina da Vigília" and produced.rarity=="Comum" and produced.damage==12 and produced.maximum==120)
     assert(variant.mastery.sword_iron==nil and p.mastery.sword_iron==mastery)
+    local relicPlayer=E.profile(4)
+    local function fixture(uid,id,quality)
+        local max=R.stats(C.recipes[id],quality,id).maximum
+        return {uid=uid,recipe=id,rarity=quality,current=max,maximum=max}
+    end
+    relicPlayer.items.phoenix=fixture("phoenix","wand_phoenix",1)
+    relicPlayer.items.phoenix2=fixture("phoenix2","wand_phoenix",3)
+    relicPlayer.items.astral=fixture("astral","staff_astral",1)
+    action(relicPlayer,market,"main:phoenix",true)
+    action(relicPlayer,market,"off:phoenix2",true)
+    local load=E.view(relicPlayer,market,false).profile.special
+    assert(load.mana==135 and load.magicDamagePct==33 and #load.spells==1 and #load.effects==1)
+    action(relicPlayer,market,"main:astral",true)
+    load=E.view(relicPlayer,market,false).profile.special
+    assert(load.mana==160 and load.armorPct==50 and #load.spells==0 and Specials.openingBarrier(load,260)==130)
+    action(relicPlayer,market,"unequip:astral",true)
+    assert(E.view(relicPlayer,market,false).profile.special.mana==0)
     now+=301
     action(p,forge,"craft:sword_iron:1",false)
     assert(p.coins>=0 and E.budget>=0 and other.items[uid]==nil)

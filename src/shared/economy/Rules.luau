@@ -1,6 +1,7 @@
 --!nonstrict
 local Rules = {}
 local Attack = require(script.Parent.AttackProfiles)
+local Specials = require(script.Parent.SpecialEffects)
 Rules.rarity = {"Comum", "Superior", "Obra-prima"}
 Rules.valuePct = {60, 120, 220}
 Rules.durabilityPct = {100, 135, 180}
@@ -55,6 +56,8 @@ function Rules.stats(recipe, rarity, recipeId)
         damageType=recipe.damageType or defaultDamageTypes[recipe.category] or "none",
         maximum=math.floor(recipe.durability*Rules.durabilityPct[rarity]/100)}
     result.attack=Attack.stats(recipe,recipeId,damage,magic)
+    result.special=Specials.stats(recipe,rarity)
     return result
 end
+Rules.loadoutSpecials=Specials.loadout
 return Rules

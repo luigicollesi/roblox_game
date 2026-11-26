@@ -56,6 +56,19 @@ function M.attackText(a)
     else text..=" | Alvo único" end
     return text
 end
+function M.specialText(s)
+    if not s then return "" end
+    local parts={"Relíquia | Vida máxima +"..s.health.." | Mana máxima +"..s.mana.." | Dano mágico global +"..s.magicDamagePct.."%"}
+    local e=s.effect
+    if e.kind=="lifesteal" then table.insert(parts,"Roubo de vida: recupera "..e.percent.."% da vida efetivamente retirada pelo ataque básico desta arma.")
+    elseif e.kind=="followup" then table.insert(parts,"Eco: "..e.chancePct.."% de chance de um golpe adicional ("..e.damagePct.."% do primeiro golpe), uma vez por ação.")
+    elseif e.kind=="manaArmor" then table.insert(parts,"Armadura de mana: inicia combate com barreira de "..e.percent.."% da mana máxima.")
+    elseif e.kind=="spell" then
+        local spell=e.spell
+        table.insert(parts,"Feitiço: "..spell.name.." | "..spell.manaCost.." mana | recarga "..spell.cooldown.." turnos | "..(spell.kind=="heal" and "cura" or "dano").." base "..spell.base.." | até "..spell.targets.." alvos")
+    end
+    return table.concat(parts,"\n")
+end
 function M.statsText(p)
     local result=M.category(p.category).." | "..p.rarity.." | "..(damageLabels[p.damageType] or "—").."\n"
     result..="Dano: "..p.damage.." | Defesa: "..p.defense.." | Magia: "..p.magic.."\n"
@@ -63,6 +76,7 @@ function M.statsText(p)
     if p.magic>0 then result..="Magia: "..p.baseMagic.." base + "..p.magicBonus.." modelo + "..p.qualityMagicBonus.." qualidade\n" end
     result..="Peso: "..p.weight.." kg | Força mínima: "..p.force.." | "..p.hands.." mão(s)"
     result..="\n"..M.attackText(p.attack)
+    if p.special then result..="\n"..M.specialText(p.special) end
     if p.description and p.description~="" then result..="\n"..p.description end
     return result
 end
@@ -75,7 +89,7 @@ function M.recipeText(recipe,materials,rules,recipeId)
         "Receita: "..table.concat(parts,", "), "Custo-base dos materiais: "..cost.." moedas (preços reais variam)"}
     for quality=1,3 do
         local s=rules.stats(recipe,quality,recipeId)
-        table.insert(lines,rules.rarity[quality]..": dano "..s.damage.." | defesa "..s.defense.." | magia "..s.magic.." | durabilidade "..s.maximum.."\n"..M.attackText(s.attack))
+        table.insert(lines,rules.rarity[quality]..": dano "..s.damage.." | defesa "..s.defense.." | magia "..s.magic.." | durabilidade "..s.maximum.."\n"..M.attackText(s.attack)..(s.special and ("\n"..M.specialText(s.special)) or ""))
     end
     if recipe.description then table.insert(lines,recipe.description) end
     return table.concat(lines,"\n")
