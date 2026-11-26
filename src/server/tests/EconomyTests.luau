@@ -226,6 +226,16 @@ function Tests.run()
     assert(load.mana==160 and load.armorPct==50 and #load.spells==0 and Specials.openingBarrier(load,260)==130)
     action(relicPlayer,market,"unequip:astral",true)
     assert(E.view(relicPlayer,market,false).profile.special.mana==0)
+    relicPlayer.items.firmament=fixture("firmament","sword_runic",3)
+    action(relicPlayer,market,"main:phoenix2",true)
+    action(relicPlayer,market,"off:firmament",true)
+    load=E.view(relicPlayer,market,false).profile.special
+    assert(load.mana==243 and load.health==47 and load.magicDamagePct==60 and #load.spells==2)
+    for _=1,4 do action(relicPlayer,market,"wear:phoenix2",true,true) end
+    load=E.view(relicPlayer,market,false).profile.special
+    assert(load.mana==108 and load.magicDamagePct==27 and #load.spells==1 and relicPlayer.main==nil)
+    assert(Specials.lifeHeal(blood.effect,0,100)==0)
+    assert(Specials.openingBarrier({armorPct=70},201)==140)
     now+=301
     action(p,forge,"craft:sword_iron:1",false)
     assert(p.coins>=0 and E.budget>=0 and other.items[uid]==nil)

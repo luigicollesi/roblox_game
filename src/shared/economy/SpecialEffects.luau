@@ -24,7 +24,12 @@ end
 function S.loadout(items)
     local best={}
     for _,item in ipairs(items) do
-        if item.current>0 and item.special and (not best[item.recipeId] or item.quality>best[item.recipeId].quality) then best[item.recipeId]=item end
+        if item.current>0 and item.special then
+            local previous=best[item.recipeId]
+            if not previous or item.quality>previous.quality or (item.quality==previous.quality and item.uid<previous.uid) then
+                best[item.recipeId]=item
+            end
+        end
     end
     local out={health=0,mana=0,magicDamagePct=0,armorPct=0,spells={},effects={}}
     local spellIds={}
