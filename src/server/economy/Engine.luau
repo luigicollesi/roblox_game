@@ -24,14 +24,14 @@ function Engine.new(C, R, clock, random)
         return {uid = "item_" .. E.serial, recipe = id, rarity = rarity, current = max, maximum = max}
     end
     for _,id in ipairs(sortedKeys(C.recipes)) do
-        for rarity = 1, (C.recipes[id].tier=="relic" and 1 or 2) do
+        for rarity = 1, ((C.recipes[id].tier=="relic" or C.recipes[id].tier=="legendary") and 1 or 2) do
             local item = newItem(id, rarity)
             E.marketItems[item.uid] = item
         end
     end
     function E.profile(userId)
         if not E.profiles[userId] then
-            E.profiles[userId] = {coins = 1200, strength = 10, materials = {}, items = {}, mastery = {}, rentals = {}, job = nil, revision = 0, main = nil, off = nil}
+            E.profiles[userId] = {coins = 1200, strength = 10, materials = {}, items = {}, mastery = {}, rentals = {}, job = nil, revision = 0, main = nil, off = nil, armor = {}}
         end
         return E.profiles[userId]
     end
@@ -82,11 +82,21 @@ function Engine.new(C, R, clock, random)
         stats.description=r.description or "";stats.named=r.named==true;stats.tier=r.tier or "standard"
         return stats
     end
+    local function equipped(p,uid)
+        if p.main==uid or p.off==uid then return true end
+        for _,value in pairs(p.armor) do if value==uid then return true end end
+        return false
+    end
+    local function unequip(p,uid)
+        if p.main==uid then p.main=nil end
+        if p.off==uid then p.off=nil end
+        for _,slot in ipairs(R.armorSlots) do if p.armor[slot]==uid then p.armor[slot]=nil end end
+    end
     local function matchShop(shop, recipe)
         local shield = recipe.category == "smallshield" or recipe.category == "largeshield"
         local magic = recipe.category == "staff" or recipe.category == "wand"
-        return shop.equipment == "all" or (shop.equipment == "shield" and shield)
-            or (shop.equipment == "magic" and magic) or (shop.equipment == "physical" and not shield and not magic)
+        return shop.equipment == "all" or (shop.equipment == "armorShield" and (shield or recipe.armorSlot~=nil)) or (shop.equipment == "shield" and shield)
+            or (shop.equipment == "magic" and magic) or (shop.equipment == "physical" and not shield and not magic and not recipe.armorSlot)
     end
     local function isRented(p, station, now) return (p.rentals[station] or 0) > now end
     -- Jobs are reserved upfront and finalized once; a move or rental expiration cannot cancel them.
@@ -173,7 +183,7 @@ function Engine.new(C, R, clock, random)
                     local product=itemDetails(item)
                     product.price=price;product.side="sell";product.kind="equipment";product.quantity=1
                     add("sellitem:"..uid,"Vender equipamentos","Vender "..itemName(item).." | "..price.." moedas",
-                        count<12 and totalMarketItems<500 and E.budget>=price and p.main~=uid and p.off~=uid, function()
+                        count<12 and totalMarketItems<500 and E.budget>=price and not equipped(p,uid), function()
                         p.items[uid]=nil; E.marketItems[uid]=item; p.coins+=price; E.budget-=price; marketTouch()
                     end,product)
                 end
@@ -272,14 +282,20 @@ function Engine.new(C, R, clock, random)
             local text=itemName(item).." | "..uid.." | força "..r.force.." | "..r.weight.."kg | dano "..stats.damage.." | defesa "..stats.defense.." | magia "..stats.magic
             if p.main==uid then text..=" | Principal" end
             if p.off==uid then text..=" | Secundária" end
+            if r.armorSlot and p.armor[r.armorSlot]==uid then text..=" | "..R.slotLabels[r.armorSlot] end
             table.insert(items,text)
             local details=itemDetails(item)
             details.slot=p.main==uid and "Principal" or p.off==uid and "Secundária" or "Inventário"
             table.insert(equipmentDetails,details)
-            if p.main==uid or p.off==uid then table.insert(equippedDetails,details) end
+            if r.armorSlot and p.armor[r.armorSlot]==uid then details.slot=R.slotLabels[r.armorSlot] end
+            if equipped(p,uid) then table.insert(equippedDetails,details) end
             local shield=r.category=="smallshield" or r.category=="largeshield"
             local valid=p.strength>=r.force and item.current>0
-            if not shield then
+            if r.armorSlot then
+                add("armor:"..uid,"Equipar","Equipar em "..R.slotLabels[r.armorSlot]..": "..itemName(item),valid and p.armor[r.armorSlot]~=uid,function()
+                    p.armor[r.armorSlot]=uid
+                end)
+            elseif not shield then
                 add("main:"..uid,"Equipar","Principal: "..itemName(item),valid and p.main~=uid,function()
                     if p.off==uid or r.hands==2 then p.off=nil end
                     p.main=uid
@@ -289,17 +305,14 @@ function Engine.new(C, R, clock, random)
             if r.hands==1 then
                 add("off:"..uid,"Equipar","Secundária: "..itemName(item),valid and p.off~=uid and p.main~=uid and (not mainRecipe or mainRecipe.hands==1),function() p.off=uid end)
             end
-            if p.main==uid or p.off==uid then
-                add("unequip:"..uid,"Equipar","Desequipar "..itemName(item),true,function()
-                    if p.main==uid then p.main=nil end
-                    if p.off==uid then p.off=nil end
-                end)
+            if equipped(p,uid) then
+                add("unequip:"..uid,"Equipar","Desequipar "..itemName(item),true,function() unequip(p,uid) end)
             end
             -- Studio only; never available on published servers. No direct monetary rewards.
             if studio and item.current>0 then
                 add("wear:"..uid,"Teste Studio","Simular desgaste: "..itemName(item),true,function()
                     item.current=math.max(0,item.current-math.ceil(item.maximum/4))
-                    if item.current==0 then if p.main==uid then p.main=nil end;if p.off==uid then p.off=nil end end
+                    if item.current==0 then unequip(p,uid) end
                 end)
             end
         end
@@ -308,7 +321,7 @@ function Engine.new(C, R, clock, random)
         return {coins=p.coins,strength=p.strength,materials=materials,items=items,mastery=mastery,actions=rows,
             shop=shop and {canSell=shop.market==true} or nil,
             profile={materials=materialDetails,equipment=equipmentDetails,materialUnits=materialUnits,
-                equipmentCount=#equipmentDetails,learnedCount=#mastery,main=p.main,off=p.off,
+                equipmentCount=#equipmentDetails,learnedCount=#mastery,main=p.main,off=p.off,armor=copy(p.armor),
                 special=R.loadoutSpecials(equippedDetails)},
             revision=p.revision,marketRevision=E.revision,location=location,
             job=p.job and ((p.job.kind=="craft" and C.recipes[p.job.id].name or C.materials[p.job.id].name).." x"..p.job.qty.." | "..math.max(0,math.ceil(p.job.ends-now)).."s") or "",

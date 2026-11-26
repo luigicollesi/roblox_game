@@ -2,6 +2,7 @@
 local Rules = {}
 local Attack = require(script.Parent.AttackProfiles)
 local Specials = require(script.Parent.SpecialEffects)
+local Loadout = require(script.Parent.EquipmentLoadout)
 Rules.rarity = {"Comum", "Superior", "Obra-prima"}
 Rules.valuePct = {60, 120, 220}
 Rules.durabilityPct = {100, 135, 180}
@@ -56,8 +57,14 @@ function Rules.stats(recipe, rarity, recipeId)
         damageType=recipe.damageType or defaultDamageTypes[recipe.category] or "none",
         maximum=math.floor(recipe.durability*Rules.durabilityPct[rarity]/100)}
     result.attack=Attack.stats(recipe,recipeId,damage,magic)
+    result.armorSlot=recipe.armorSlot;result.setId=recipe.setId
+    result.magicDefense=math.floor((recipe.magicDefense or 0)*defensePct/100)
+    result.resistances={}
+    for _,key in ipairs({"slash","pierce","blunt"}) do result.resistances[key]=math.floor((recipe.resistances and recipe.resistances[key] or 0)*defensePct/100) end
     result.special=Specials.stats(recipe,rarity)
     return result
 end
-Rules.loadoutSpecials=Specials.loadout
+Rules.loadoutSpecials=Loadout.aggregate
+Rules.armorSlots=Loadout.slots
+Rules.slotLabels=Loadout.labels
 return Rules
