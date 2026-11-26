@@ -1,0 +1,23 @@
+--!nonstrict
+return {
+    ["peasant"] = {["name"] = "Vestimentas do Camponês", ["tier"] = "budget", ["two"] = {["defensePct"] = 2}, ["four"] = {["defensePct"] = 3}},
+    ["traveler"] = {["name"] = "Traje do Viajante", ["tier"] = "budget", ["two"] = {["speedPct"] = 3}, ["four"] = {["speedPct"] = 5}},
+    ["hunter"] = {["name"] = "Vestes do Caçador", ["tier"] = "budget", ["two"] = {["attackPct"] = 3}, ["four"] = {["defensePct"] = 4}},
+    ["apprentice"] = {["name"] = "Vestes do Aprendiz", ["tier"] = "budget", ["two"] = {["magicDefensePct"] = 2}, ["four"] = {["magicDefensePct"] = 5}},
+    ["wanderer"] = {["name"] = "Couro dos Errantes", ["tier"] = "middle", ["two"] = {["speedPct"] = 5}, ["four"] = {["attackPct"] = 7}},
+    ["mercenary"] = {["name"] = "Armadura do Mercenário", ["tier"] = "middle", ["two"] = {["attackPct"] = 5}, ["four"] = {["defensePct"] = 10}},
+    ["sentinel"] = {["name"] = "Armadura da Sentinela", ["tier"] = "middle", ["two"] = {["defensePct"] = 6}, ["four"] = {["slashPct"] = 8}},
+    ["watch"] = {["name"] = "Malha da Vigília", ["tier"] = "middle", ["two"] = {["defensePct"] = 8}, ["four"] = {["piercePct"] = 10}},
+    ["royal"] = {["name"] = "Placas da Guarda Real", ["tier"] = "advanced", ["two"] = {["defensePct"] = 12}, ["four"] = {["attackPct"] = 10}},
+    ["moon"] = {["name"] = "Traje da Lua Negra", ["tier"] = "advanced", ["two"] = {["speedPct"] = 10}, ["four"] = {["attackPct"] = 15}},
+    ["archmage"] = {["name"] = "Vestes do Arquimago", ["tier"] = "advanced", ["two"] = {["magicDefensePct"] = 12}, ["four"] = {["magicDefensePct"] = 15}},
+    ["raider"] = {["name"] = "Armadura do Saqueador", ["tier"] = "advanced", ["two"] = {["attackPct"] = 12}, ["four"] = {["attackPct"] = 10}},
+    ["silverwind"] = {["name"] = "Armadura do Vento Prateado", ["tier"] = "elite", ["two"] = {["speedPct"] = 15}, ["four"] = {["defensePct"] = 20}},
+    ["colossus"] = {["name"] = "Armadura do Colosso", ["tier"] = "elite", ["two"] = {["defensePct"] = 15}, ["four"] = {["defensePct"] = 25}},
+    ["crimson"] = {["name"] = "Armadura da Rosa Carmesim", ["tier"] = "elite", ["two"] = {["attackPct"] = 15}, ["four"] = {["health"] = 100, ["attackPct"] = 10}},
+    ["ascension"] = {["name"] = "Vestes da Ascensão", ["tier"] = "elite", ["two"] = {["mana"] = 80}, ["four"] = {["magicDamagePct"] = 25}},
+    ["immortal"] = {["name"] = "Armadura do Soberano Imortal", ["tier"] = "legendary", ["two"] = {["health"] = 200, ["defensePct"] = 15}, ["four"] = {["effects"] = {{["kind"] = "fatalSurvival", ["healPct"] = 25}}}},
+    ["divinity"] = {["name"] = "Vestes da Divindade Arcana", ["tier"] = "legendary", ["two"] = {["mana"] = 200, ["magicDamagePct"] = 20}, ["four"] = {["effects"] = {{["kind"] = "spell", ["spellId"] = "celestial_collapse"}, {["kind"] = "manaArmor", ["percent"] = 100}}}},
+    ["souleater"] = {["name"] = "Armadura do Devorador de Almas", ["tier"] = "legendary", ["two"] = {["attackPct"] = 25, ["health"] = 100}, ["four"] = {["effects"] = {{["kind"] = "lifesteal", ["percent"] = 30, ["scope"] = "physicalBasic"}, {["kind"] = "killHeal", ["percent"] = 10}}}},
+    ["time"] = {["name"] = "Traje do Senhor do Tempo", ["tier"] = "legendary", ["two"] = {["speedPct"] = 25, ["attackPct"] = 10}, ["four"] = {["effects"] = {{["kind"] = "followup", ["chancePct"] = 35, ["damagePct"] = 100}}}},
+}

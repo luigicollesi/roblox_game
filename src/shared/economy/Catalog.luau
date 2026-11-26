@@ -185,4 +185,15 @@ for id, recipe in pairs(require(script.Parent.RelicWeapons)) do
     assert(not Catalog.recipes[id], "Duplicate recipe: " .. id)
     Catalog.recipes[id] = recipe
 end
+local armorMaterials=require(script.Parent.ArmorMaterials)
+local function extend(target,source)
+    for id,value in pairs(source) do assert(target[id]==nil,"Duplicate catalog ID: "..id);target[id]=value end
+end
+extend(Catalog.materials,armorMaterials.materials)
+extend(Catalog.processing,armorMaterials.processing)
+extend(Catalog.stations,armorMaterials.stations)
+extend(Catalog.shops,armorMaterials.shops)
+extend(Catalog.recipes,require(script.Parent.ArmorCatalog))
+Catalog.sets=require(script.Parent.ArmorSets)
+Catalog.shops["valdoria.militar.armaduras.salao_de_vendas"].equipment="armorShield"
 return Catalog
